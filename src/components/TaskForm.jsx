@@ -34,78 +34,84 @@ export function TaskForm({ onAddTask, onCancel, statuses }) {
 
   return (
     <form className="task-form" onSubmit={handleSubmit}>
-      <div className="form-primary">
-        <label htmlFor="task-title">New task</label>
-        <input
-          id="task-title"
-          type="text"
-          value={draft.title}
-          onChange={(event) => updateDraft('title', event.target.value)}
-          placeholder="Describe the next piece of work"
-        />
-      </div>
-
-      <label className="sr-only" htmlFor="task-description">
-        Task description
-      </label>
-      <textarea
-        id="task-description"
-        value={draft.description}
-        onChange={(event) => updateDraft('description', event.target.value)}
-        placeholder="Notes, acceptance criteria, or context"
-        rows="2"
-      />
-
-      <div className="form-grid">
-        <label>
-          Status
-          <select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Priority
-          <select
-            value={draft.priority}
-            onChange={(event) => updateDraft('priority', event.target.value)}
-          >
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-        </label>
-        <label>
-          Due
+      <div className="task-form-main">
+        <div className="form-primary">
+          <label htmlFor="task-title">New task</label>
           <input
-            type="date"
-            value={draft.dueDate}
-            onChange={(event) => updateDraft('dueDate', event.target.value)}
-          />
-        </label>
-        <label>
-          Owner
-          <input
+            id="task-title"
             type="text"
-            value={draft.owner}
-            onChange={(event) => updateDraft('owner', event.target.value)}
-            placeholder="Name"
+            value={draft.title}
+            onChange={(event) => updateDraft('title', event.target.value)}
+            placeholder="Describe the next piece of work"
+          />
+        </div>
+
+        <label>
+          Notes
+          <textarea
+            id="task-description"
+            value={draft.description}
+            onChange={(event) => updateDraft('description', event.target.value)}
+            placeholder="Acceptance criteria, context, or links"
+            rows="2"
           />
         </label>
       </div>
 
-      <button className="primary-button" type="submit">
-        Add task
-      </button>
+      <div className="task-form-footer">
+        <div className="form-grid">
+          <label>
+            Status
+            <select value={draft.status} onChange={(event) => updateDraft('status', event.target.value)}>
+              {statuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Priority
+            <select
+              value={draft.priority}
+              onChange={(event) => updateDraft('priority', event.target.value)}
+            >
+              <option>Low</option>
+              <option>Medium</option>
+              <option>High</option>
+            </select>
+          </label>
+          <label>
+            Due
+            <input
+              type="date"
+              value={draft.dueDate}
+              onChange={(event) => updateDraft('dueDate', event.target.value)}
+            />
+          </label>
+          <label>
+            Owner
+            <input
+              type="text"
+              value={draft.owner}
+              onChange={(event) => updateDraft('owner', event.target.value)}
+              placeholder="Name"
+            />
+          </label>
+        </div>
 
-      {onCancel ? (
-        <button className="secondary-button" type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      ) : null}
+        <div className="form-actions">
+          <button className="primary-button" type="submit">
+            Add task
+          </button>
+
+          {onCancel ? (
+            <button className="secondary-button" type="button" onClick={onCancel}>
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      </div>
     </form>
   )
 }

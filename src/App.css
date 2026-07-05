@@ -265,19 +265,33 @@ h1 {
 
 .task-form {
   display: grid;
-  grid-template-columns: minmax(280px, 1.35fr) minmax(220px, 1fr) auto auto;
-  align-items: end;
-  gap: 12px;
+  gap: 14px;
   padding: 16px;
+}
+
+.task-form-main,
+.task-form-footer {
+  display: grid;
+  gap: 12px;
+}
+
+.task-form-main {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  align-items: start;
+}
+
+.task-form-footer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
 }
 
 .form-primary {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .form-grid,
-.filter-grid,
+.form-actions,
 .task-actions {
   display: grid;
   gap: 10px;
@@ -285,6 +299,11 @@ h1 {
 
 .form-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.form-actions {
+  grid-template-columns: auto auto;
+  align-items: end;
 }
 
 .filter-strip,
@@ -670,6 +689,11 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .task-form-main,
+  .task-form-footer {
+    grid-template-columns: 1fr;
+  }
+
   .filter-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   }
@@ -680,6 +704,10 @@ textarea:focus-visible {
   .summary-strip,
   .form-grid,
   .filter-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
     grid-template-columns: 1fr;
   }
 
