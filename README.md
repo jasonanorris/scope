@@ -1,6 +1,6 @@
 # Scope
 
-Scope is a lightweight project-management web app built with Vite and React. This first version is a static frontend with local-only persistence, intended to be protected by Cloudflare Access when deployed.
+Scope is a lightweight project-management web app built with Vite, React, a Cloudflare Worker API, and Cloudflare D1. It is intended to be protected by Cloudflare Access when deployed.
 
 ## Features
 
@@ -16,16 +16,20 @@ Scope is a lightweight project-management web app built with Vite and React. Thi
 
 ```sh
 npm install
+npm run db:migrate:local
 npm run dev
 ```
 
-The React-only Vite dev server expects the deployed Worker API to exist. For local API and D1 work, use Wrangler after building:
+`npm run dev` builds the frontend and starts Wrangler locally, including the Worker API and local D1 database.
+
+For Vite HMR while doing UI-only work, run the Worker and Vite servers separately:
 
 ```sh
-npm run build
-npm run db:migrate:local
-npm run deploy -- --dry-run
+npm run dev:worker
+npm run dev:vite
 ```
+
+The Vite server proxies `/api` to Wrangler on `localhost:8787`.
 
 ## Checks
 

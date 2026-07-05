@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build && wrangler dev --local",
+    "dev:vite": "vite",
+    "dev:worker": "wrangler dev --local",
     "build": "vite build",
     "db:create": "wrangler d1 create scope",
     "db:migrate:local": "wrangler d1 migrations apply scope --local",
