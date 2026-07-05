@@ -276,13 +276,13 @@ h1 {
 }
 
 .task-form-main {
-  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  grid-template-columns: 1fr;
   align-items: start;
 }
 
 .task-form-footer {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  grid-template-columns: 1fr;
+  align-items: start;
 }
 
 .form-primary {
@@ -304,6 +304,7 @@ h1 {
 .form-actions {
   grid-template-columns: auto auto;
   align-items: end;
+  justify-content: end;
 }
 
 .filter-strip,
