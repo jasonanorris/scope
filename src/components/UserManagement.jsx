@@ -11,7 +11,7 @@ export function UserManagement({
   currentUserType,
   users,
 }) {
-  const [draft, setDraft] = useState({ name: '', email: '', type: 'standard' })
+  const [draft, setDraft] = useState({ name: '', email: '', title: '', type: 'standard' })
   const memberIds = new Set(members.map((member) => member.userId))
   const isAdmin = currentUserType === 'admin'
 
@@ -23,7 +23,7 @@ export function UserManagement({
     }
 
     onAddUser(draft)
-    setDraft({ name: '', email: '', type: 'standard' })
+    setDraft({ name: '', email: '', title: '', type: 'standard' })
   }
 
   function toggleMember(userId) {
@@ -68,6 +68,18 @@ export function UserManagement({
             placeholder="person@example.com"
           />
         </label>
+        <label>
+          Title
+          <input
+            type="text"
+            value={draft.title}
+            disabled={!canManageProjectUsers}
+            onChange={(event) =>
+              setDraft((currentDraft) => ({ ...currentDraft, title: event.target.value }))
+            }
+            placeholder="Product lead"
+          />
+        </label>
         {isAdmin ? (
           <label>
             Type
@@ -104,7 +116,7 @@ export function UserManagement({
               />
               <span>
                 <strong>{user.name || user.email}</strong>
-                <small>{user.email}</small>
+                <small>{user.title ? `${user.title} • ${user.email}` : user.email}</small>
               </span>
               {isAdmin ? (
                 <select

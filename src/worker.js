@@ -76,6 +76,7 @@ function toUser(row) {
     id: row.id,
     email: row.email,
     name: row.name,
+    title: row.title ?? '',
     type: row.type ?? 'standard',
   }
 }
@@ -108,6 +109,7 @@ async function ensureSchema(db) {
           id TEXT PRIMARY KEY,
           email TEXT NOT NULL UNIQUE,
           name TEXT NOT NULL DEFAULT '',
+          title TEXT NOT NULL DEFAULT '',
           type TEXT NOT NULL DEFAULT 'standard',
           created_by TEXT NOT NULL,
           created_at TEXT NOT NULL,
@@ -165,6 +167,7 @@ async function ensureSchema(db) {
   await schemaReady
 
   await db.prepare("ALTER TABLE users ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'").run().catch(() => {})
+  await db.prepare("ALTER TABLE users ADD COLUMN title TEXT NOT NULL DEFAULT ''").run().catch(() => {})
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_type ON users(type)').run()
 }
 
@@ -192,16 +195,16 @@ async function ensureCurrentUser(db, userId) {
 
   await db
     .prepare(
-      `INSERT INTO users (id, email, name, type, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO users (id, email, name, title, type, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at`,
     )
-    .bind(userId, userId, name, type, userId, now, now)
+    .bind(userId, userId, name, '', type, userId, now, now)
     .run()
 }
 
 async function getCurrentUser(db, userId) {
-  return db.prepare('SELECT id, email, name, type FROM users WHERE id = ?').bind(userId).first()
+  return db.prepare('SELECT id, email, name, title, type FROM users WHERE id = ?').bind(userId).first()
 }
 
 async function ensureOwnedProjectMemberships(db, userId) {
@@ -320,7 +323,7 @@ async function loadWorkspace(db, userId) {
     bindAll(
       db
       .prepare(
-        `SELECT DISTINCT u.id, u.email, u.name, u.type
+        `SELECT DISTINCT u.id, u.email, u.name, u.title, u.type
          FROM users u
          LEFT JOIN project_members pm ON pm.user_id = u.id
          LEFT JOIN projects p ON p.id = pm.project_id
@@ -426,19 +429,20 @@ async function handleApi(request, env) {
 
     const now = new Date().toISOString()
     const name = input?.name?.trim() || email.split('@')[0]
+    const title = input?.title?.trim() ?? ''
     const requestedType = input?.type ?? 'standard'
     const type = currentUser.type === 'admin' && allowedUserTypes.has(requestedType) ? requestedType : 'standard'
 
     await env.DB
       .prepare(
-        `INSERT INTO users (id, email, name, type, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email, type = excluded.type, updated_at = excluded.updated_at`,
+        `INSERT INTO users (id, email, name, title, type, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, title = excluded.title, email = excluded.email, type = excluded.type, updated_at = excluded.updated_at`,
       )
-      .bind(email, email, name, type, userId, now, now)
+      .bind(email, email, name, title, type, userId, now, now)
       .run()
 
-    return json({ id: email, email, name, type }, { status: 201 })
+    return json({ id: email, email, name, title, type }, { status: 201 })
   }
 
   const userMatch = url.pathname.match(/^\/api\/users\/([^/]+)$/)
@@ -453,18 +457,28 @@ async function handleApi(request, env) {
     const targetUserId = decodeURIComponent(userMatch[1]).toLowerCase()
     const input = await readJson(request)
     const nextType = input?.type
+    const nextTitle = typeof input?.title === 'string' ? input.title.trim() : undefined
 
-    if (!allowedUserTypes.has(nextType)) {
+    if (nextType !== undefined && !allowedUserTypes.has(nextType)) {
       return error('User type is not valid.')
     }
 
-    await env.DB
-      .prepare('UPDATE users SET type = ?, updated_at = ? WHERE id = ?')
-      .bind(nextType, new Date().toISOString(), targetUserId)
-      .run()
+    if (nextType !== undefined) {
+      await env.DB
+        .prepare('UPDATE users SET type = ?, updated_at = ? WHERE id = ?')
+        .bind(nextType, new Date().toISOString(), targetUserId)
+        .run()
+    }
+
+    if (nextTitle !== undefined) {
+      await env.DB
+        .prepare('UPDATE users SET title = ?, updated_at = ? WHERE id = ?')
+        .bind(nextTitle, new Date().toISOString(), targetUserId)
+        .run()
+    }
 
     const user = await env.DB
-      .prepare('SELECT id, email, name, type FROM users WHERE id = ?')
+      .prepare('SELECT id, email, name, title, type FROM users WHERE id = ?')
       .bind(targetUserId)
       .first()
 
