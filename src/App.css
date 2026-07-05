@@ -171,6 +171,17 @@
   padding: 28px;
 }
 
+.notice {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(200, 85, 61, 0.28);
+  border-radius: 8px;
+  background: var(--coral-wash);
+  color: var(--coral);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .workspace-header {
   align-items: flex-start;
   margin-bottom: 22px;

@@ -1,11 +1,23 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "scope",
+  "main": "./src/worker.js",
   "compatibility_date": "2026-07-05",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "scope",
+      "database_id": "839feb7e-482c-44e5-9360-b59b8ec0250b"
+    }
+  ],
   "observability": {
     "enabled": true
   }

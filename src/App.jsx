@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { createProject, createTask, deleteTask, getWorkspace, updateTask } from './api/workspaceApi.js'
 import { FilterBar } from './components/FilterBar.jsx'
 import { ProjectSidebar } from './components/ProjectSidebar.jsx'
 import { SearchBar } from './components/SearchBar.jsx'
 import { TaskBoard } from './components/TaskBoard.jsx'
 import { TaskForm } from './components/TaskForm.jsx'
-import { sampleProjects, sampleTasks } from './data/sampleData.js'
-import { useLocalStorage } from './hooks/useLocalStorage.js'
 
 const statusOrder = ['Backlog', 'In Progress', 'Review', 'Done']
 
@@ -16,16 +15,46 @@ const defaultFilters = {
   priority: 'All',
 }
 
-function makeId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
 function App() {
-  const [projects, setProjects] = useLocalStorage('scope.projects', sampleProjects)
-  const [tasks, setTasks] = useLocalStorage('scope.tasks', sampleTasks)
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? '')
+  const [projects, setProjects] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [selectedProjectId, setSelectedProjectId] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadWorkspace() {
+      try {
+        const data = await getWorkspace()
+
+        if (!isMounted) {
+          return
+        }
+
+        setProjects(data.projects)
+        setTasks(data.tasks)
+        setSelectedProjectId((currentProjectId) => currentProjectId || data.projects[0]?.id || '')
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(error.message)
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadWorkspace()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
@@ -52,42 +81,70 @@ function App() {
     }, {})
   }, [tasks])
 
-  function handleAddProject(name) {
-    const nextProject = {
-      id: makeId('project'),
-      name,
-      description: 'New project',
-    }
+  async function handleAddProject(name) {
+    try {
+      const nextProject = await createProject({
+        name,
+        description: 'New project',
+      })
 
-    setProjects((currentProjects) => [...currentProjects, nextProject])
-    setSelectedProjectId(nextProject.id)
+      setProjects((currentProjects) => [...currentProjects, nextProject])
+      setSelectedProjectId(nextProject.id)
+      setErrorMessage('')
+    } catch (error) {
+      setErrorMessage(error.message)
+    }
   }
 
-  function handleAddTask(taskInput) {
-    const nextTask = {
-      id: makeId('task'),
-      projectId: selectedProject.id,
-      title: taskInput.title,
-      description: taskInput.description,
-      status: taskInput.status,
-      priority: taskInput.priority,
-      dueDate: taskInput.dueDate,
-      owner: taskInput.owner,
-      createdAt: new Date().toISOString(),
-    }
+  async function handleAddTask(taskInput) {
+    try {
+      const nextTask = await createTask({
+        projectId: selectedProject.id,
+        title: taskInput.title,
+        description: taskInput.description,
+        status: taskInput.status,
+        priority: taskInput.priority,
+        dueDate: taskInput.dueDate,
+        owner: taskInput.owner,
+      })
 
-    setTasks((currentTasks) => [nextTask, ...currentTasks])
-    setIsTaskFormOpen(false)
+      setTasks((currentTasks) => [nextTask, ...currentTasks])
+      setIsTaskFormOpen(false)
+      setErrorMessage('')
+    } catch (error) {
+      setErrorMessage(error.message)
+    }
   }
 
-  function handleTaskChange(taskId, updates) {
+  async function handleTaskChange(taskId, updates) {
+    const previousTasks = tasks
+
     setTasks((currentTasks) =>
       currentTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
     )
+
+    try {
+      const savedTask = await updateTask(taskId, updates)
+      setTasks((currentTasks) => currentTasks.map((task) => (task.id === taskId ? savedTask : task)))
+      setErrorMessage('')
+    } catch (error) {
+      setTasks(previousTasks)
+      setErrorMessage(error.message)
+    }
   }
 
-  function handleDeleteTask(taskId) {
+  async function handleDeleteTask(taskId) {
+    const previousTasks = tasks
+
     setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
+
+    try {
+      await deleteTask(taskId)
+      setErrorMessage('')
+    } catch (error) {
+      setTasks(previousTasks)
+      setErrorMessage(error.message)
+    }
   }
 
   function handleClearFilters() {
@@ -105,6 +162,12 @@ function App() {
       />
 
       <main className="workspace" aria-labelledby="workspace-title">
+        {errorMessage ? (
+          <div className="notice" role="alert">
+            {errorMessage}
+          </div>
+        ) : null}
+
         <header className="workspace-header">
           <div>
             <p className="eyebrow">Scope</p>
@@ -129,7 +192,12 @@ function App() {
           </div>
         </header>
 
-        {selectedProject ? (
+        {isLoading ? (
+          <section className="empty-state">
+            <h2>Loading workspace</h2>
+            <p>Fetching your projects and tasks from Cloudflare D1.</p>
+          </section>
+        ) : selectedProject ? (
           <>
             <section className="workspace-controls" aria-label="Task controls">
               <button

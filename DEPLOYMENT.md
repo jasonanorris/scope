@@ -23,6 +23,35 @@ No environment variables are required for the current local-only version.
 
 The deploy command is backed by `wrangler.jsonc`, which publishes the static `dist` directory as Cloudflare assets. Do not put secrets or private runtime config in this frontend project.
 
+## D1 Setup
+
+Scope stores projects and tasks in Cloudflare D1. Before deploying the D1-backed app for the first time:
+
+1. Create the database:
+
+```sh
+npm run db:create
+```
+
+2. Copy the `database_id` from Wrangler's output into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
+
+3. Apply the schema migration:
+
+```sh
+npm run db:migrate:remote
+```
+
+The Worker also runs `CREATE TABLE IF NOT EXISTS` on API startup as a safety net. If you cannot run the remote migration from your local environment, the first authenticated API request can still initialize the schema.
+
+4. Deploy:
+
+```sh
+npm run build
+npm run deploy
+```
+
+The Worker reads Cloudflare Access identity from the `cf-access-authenticated-user-email` request header and stores a separate workspace for each signed-in email. In local development, it falls back to `local-development-user`.
+
 ## SPA Fallback
 
 Scope does not use client-side routing yet, so it does not need a Pages `_redirects` file today.
@@ -30,6 +59,8 @@ Scope does not use client-side routing yet, so it does not need a Pages `_redire
 If client-side routes are added later, configure the SPA fallback in the Cloudflare Pages project settings or add a Pages-compatible `_redirects` file at that time.
 
 ## Troubleshooting
+
+If deploy fails with `database_id = REPLACE_WITH_D1_DATABASE_ID`, the D1 database has not been created or the Wrangler config has not been updated with the real database ID.
 
 If the Cloudflare log shows Wrangler trying to create `wrangler.jsonc` during the deploy, make sure the latest commit is deployed. This repository includes the Wrangler config so Cloudflare should not need to auto-generate it.
 
