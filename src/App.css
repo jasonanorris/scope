@@ -316,6 +316,7 @@ h1 {
 
 .user-type-select {
   min-width: 116px;
+  max-width: 100%;
 }
 
 .member-row input {
@@ -752,9 +753,13 @@ textarea:focus-visible {
   }
 
   .project-nav ul {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(210px, 76vw);
+    grid-template-columns: none;
     max-height: none;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 2px;
   }
 
   .workspace {
@@ -764,6 +769,7 @@ textarea:focus-visible {
   .workspace-header,
   .workspace-controls {
     display: grid;
+    gap: 14px;
   }
 
   .summary-strip {
@@ -772,6 +778,12 @@ textarea:focus-visible {
 
   .workspace-controls {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-controls .primary-button,
+  .user-form button {
+    width: 100%;
+    justify-self: stretch;
   }
 
   .task-form {
@@ -790,6 +802,10 @@ textarea:focus-visible {
   .filter-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   }
+
+  .member-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -797,6 +813,24 @@ textarea:focus-visible {
   .summary-strip,
   .form-grid,
   .filter-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-lockup {
+    align-items: flex-start;
+  }
+
+  .summary-strip span {
+    min-height: 50px;
+  }
+
+  .filter-strip button,
+  .form-actions button,
+  .task-actions select {
+    width: 100%;
+  }
+
+  .task-actions {
     grid-template-columns: 1fr;
   }
 
@@ -817,5 +851,36 @@ textarea:focus-visible {
 
   .board-column {
     min-width: 0;
+  }
+
+  .member-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .member-row em,
+  .user-type-select {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 390px) {
+  .project-sidebar,
+  .workspace {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .task-form,
+  .user-panel {
+    padding: 12px;
+  }
+
+  .task-card {
+    padding: 10px 10px 10px 12px;
   }
 }
