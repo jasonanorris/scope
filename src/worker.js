@@ -96,6 +96,10 @@ async function readJson(request) {
   }
 }
 
+function bindAll(statement, bindings) {
+  return bindings.length > 0 ? statement.bind(...bindings).all() : statement.all()
+}
+
 async function ensureSchema(db) {
   if (!schemaReady) {
     schemaReady = db.batch([
@@ -148,7 +152,6 @@ async function ensureSchema(db) {
         )
       `),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_users_created_by ON users(created_by)'),
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_users_type ON users(type)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)'),
@@ -291,17 +294,19 @@ async function loadWorkspace(db, userId) {
   const memberBindings = isAdmin ? [] : [userId, userId]
 
   const [projectRows, taskRows, userRows, memberRows] = await Promise.all([
-    db
+    bindAll(
+      db
       .prepare(
         `SELECT DISTINCT p.id, p.user_id, p.name, p.description, p.created_at
          FROM projects p
          LEFT JOIN project_members pm ON pm.project_id = p.id
          WHERE ${projectScope}
          ORDER BY p.created_at ASC`,
-      )
-      .bind(...projectBindings)
-      .all(),
-    db
+      ),
+      projectBindings,
+    ),
+    bindAll(
+      db
       .prepare(
         `SELECT DISTINCT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.due_date, t.owner, t.created_at
          FROM tasks t
@@ -309,10 +314,11 @@ async function loadWorkspace(db, userId) {
          LEFT JOIN project_members pm ON pm.project_id = p.id
          WHERE ${projectScope}
          ORDER BY t.created_at DESC`,
-      )
-      .bind(...taskBindings)
-      .all(),
-    db
+      ),
+      taskBindings,
+    ),
+    bindAll(
+      db
       .prepare(
         `SELECT DISTINCT u.id, u.email, u.name, u.type
          FROM users u
@@ -326,10 +332,11 @@ async function loadWorkspace(db, userId) {
          )`
          }
          ORDER BY u.name ASC, u.email ASC`,
-      )
-      .bind(...userBindings)
-      .all(),
-    db
+      ),
+      userBindings,
+    ),
+    bindAll(
+      db
       .prepare(
         `SELECT pm.project_id, pm.user_id, pm.role
          FROM project_members pm
@@ -341,9 +348,9 @@ async function loadWorkspace(db, userId) {
            SELECT project_id FROM project_members WHERE user_id = ?
          )`
          }`,
-      )
-      .bind(...memberBindings)
-      .all(),
+      ),
+      memberBindings,
+    ),
   ])
 
   return {
