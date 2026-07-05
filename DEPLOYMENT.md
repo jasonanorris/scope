@@ -17,11 +17,11 @@ Scope builds as a static Vite frontend. It does not contain secrets, API keys, p
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Root directory | `/` |
-| Deploy command | Leave blank |
+| Deploy command | `npm run deploy` |
 
 No environment variables are required for the current local-only version.
 
-Do not set the deploy command to `npx wrangler deploy` for this Pages deployment. Cloudflare Pages should build the app and publish the `dist` directory directly.
+The deploy command is backed by `wrangler.jsonc`, which publishes the static `dist` directory as Cloudflare assets. Do not put secrets or private runtime config in this frontend project.
 
 ## SPA Fallback
 
@@ -31,7 +31,7 @@ If client-side routes are added later, configure the SPA fallback in the Cloudfl
 
 ## Troubleshooting
 
-If the Cloudflare log shows `Executing user deploy command: npx wrangler deploy`, the project is using the wrong deploy flow for this app. Remove the deploy command from the Cloudflare Pages build settings and redeploy.
+If the Cloudflare log shows Wrangler trying to create `wrangler.jsonc` during the deploy, make sure the latest commit is deployed. This repository includes the Wrangler config so Cloudflare should not need to auto-generate it.
 
 ## Custom Domain
 
