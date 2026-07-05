@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import './App.css'
 import { FilterBar } from './components/FilterBar.jsx'
 import { ProjectSidebar } from './components/ProjectSidebar.jsx'
+import { SearchBar } from './components/SearchBar.jsx'
 import { TaskBoard } from './components/TaskBoard.jsx'
 import { TaskForm } from './components/TaskForm.jsx'
 import { sampleProjects, sampleTasks } from './data/sampleData.js'
@@ -140,6 +141,11 @@ function App() {
               >
                 {isTaskFormOpen ? 'Close' : 'New task'}
               </button>
+
+              <SearchBar
+                value={filters.search}
+                onChange={(search) => setFilters((currentFilters) => ({ ...currentFilters, search }))}
+              />
 
               <FilterBar
                 filters={filters}

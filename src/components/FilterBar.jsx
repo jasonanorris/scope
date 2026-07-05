@@ -6,47 +6,30 @@ export function FilterBar({ filters, statuses, onChange, onClear }) {
   }
 
   return (
-    <section className="filter-panel" aria-label="Task filters">
-      <div className="section-heading">
-        <h2>Filters</h2>
-        <button type="button" onClick={onClear} disabled={!hasFilters}>
-          Clear
-        </button>
-      </div>
-
+    <section className="filter-strip" aria-label="Task filters">
       <label>
-        Search
-        <input
-          type="search"
-          value={filters.search}
-          onChange={(event) => updateFilter('search', event.target.value)}
-          placeholder="Title or notes"
-        />
+        <span className="sr-only">Status</span>
+        <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
+          <option value="All">All statuses</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
       </label>
-
-      <div className="filter-grid">
-        <label>
-          Status
-          <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
-            <option>All</option>
-            {statuses.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Priority
-          <select
-            value={filters.priority}
-            onChange={(event) => updateFilter('priority', event.target.value)}
-          >
-            <option>All</option>
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-        </label>
-      </div>
+      <label>
+        <span className="sr-only">Priority</span>
+        <select value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}>
+          <option value="All">All priorities</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
+      </label>
+      <button type="button" onClick={onClear} disabled={!hasFilters}>
+        Clear
+      </button>
     </section>
   )
 }

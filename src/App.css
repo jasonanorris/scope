@@ -241,7 +241,7 @@ h1 {
 
 .workspace-controls {
   display: grid;
-  grid-template-columns: auto minmax(360px, 0.7fr);
+  grid-template-columns: auto minmax(240px, 420px) auto;
   align-items: start;
   justify-content: space-between;
   gap: 14px;
@@ -249,7 +249,6 @@ h1 {
 }
 
 .task-form,
-.filter-panel,
 .empty-state {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -288,15 +287,21 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.filter-panel {
+.filter-strip,
+.task-actions {
   display: grid;
-  align-content: start;
-  gap: 12px;
-  padding: 16px;
-  border-top: 4px solid var(--coral);
+  gap: 10px;
 }
 
-.filter-grid,
+.filter-strip {
+  grid-template-columns: minmax(136px, 1fr) minmax(136px, 1fr) auto;
+  align-items: start;
+}
+
+.search-field {
+  min-width: 0;
+}
+
 .task-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -664,13 +669,17 @@ textarea:focus-visible {
   .task-form {
     grid-template-columns: 1fr;
   }
+
+  .filter-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
 }
 
 @media (max-width: 560px) {
   .project-nav ul,
   .summary-strip,
   .form-grid,
-  .filter-grid {
+  .filter-strip {
     grid-template-columns: 1fr;
   }
 
