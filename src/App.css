@@ -271,16 +271,58 @@ h1 {
   border-top: 4px solid var(--accent);
 }
 
-.task-create-panel {
-  margin-bottom: 18px;
-}
-
 .user-panel {
   display: grid;
   gap: 12px;
   margin-bottom: 18px;
   padding: 14px;
   border-top: 4px solid var(--violet);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(21, 31, 27, 0.42);
+}
+
+.task-modal {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100svh - 36px));
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(30, 43, 34, 0.24);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 2px 0 0;
+  color: var(--text-strong);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.modal-header button {
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .user-form {
@@ -862,6 +904,20 @@ textarea:focus-visible {
   .user-type-select {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .modal-backdrop {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .task-modal {
+    width: 100%;
+    max-height: calc(100svh - 20px);
+  }
+
+  .modal-header {
+    padding: 14px;
   }
 }
 

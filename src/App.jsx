@@ -74,6 +74,21 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isTaskFormOpen) {
+      return undefined
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setIsTaskFormOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isTaskFormOpen])
+
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
   const selectedProjectMembers = projectMembers.filter(
@@ -291,11 +306,11 @@ function App() {
               <button
                 type="button"
                 className="primary-button"
-                onClick={() => setIsTaskFormOpen((isOpen) => !isOpen)}
+                onClick={() => setIsTaskFormOpen(true)}
                 aria-expanded={isTaskFormOpen}
-                aria-controls="task-create-panel"
+                aria-controls="task-create-dialog"
               >
-                {isTaskFormOpen ? 'Close' : 'New task'}
+                New task
               </button>
 
               <SearchBar
@@ -310,16 +325,6 @@ function App() {
                 statuses={statusOrder}
               />
             </section>
-
-            {isTaskFormOpen ? (
-              <section id="task-create-panel" className="task-create-panel" aria-label="Create a task">
-                <TaskForm
-                  onAddTask={handleAddTask}
-                  onCancel={() => setIsTaskFormOpen(false)}
-                  statuses={statusOrder}
-                />
-              </section>
-            ) : null}
 
             {currentUserType !== 'standard' ? (
               <UserManagement
@@ -351,6 +356,40 @@ function App() {
           </section>
         )}
       </main>
+
+      {isTaskFormOpen ? (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsTaskFormOpen(false)
+            }
+          }}
+        >
+          <section
+            id="task-create-dialog"
+            className="task-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-modal-title"
+          >
+            <header className="modal-header">
+              <div>
+                <p className="eyebrow">Create</p>
+                <h2 id="task-modal-title">New task</h2>
+              </div>
+              <button type="button" onClick={() => setIsTaskFormOpen(false)} aria-label="Close new task">
+                ×
+              </button>
+            </header>
+            <TaskForm
+              onAddTask={handleAddTask}
+              onCancel={() => setIsTaskFormOpen(false)}
+              statuses={statusOrder}
+            />
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }
