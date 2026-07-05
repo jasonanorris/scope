@@ -25,13 +25,13 @@ Do not set the deploy command to `npx wrangler deploy` for this Pages deployment
 
 ## SPA Fallback
 
-The file `public/_redirects` is copied into `dist` during the Vite build. It sends deep links back to `index.html`, which is useful if client-side routing is added later.
+Scope does not use client-side routing yet, so it does not need a Pages `_redirects` file today.
+
+If client-side routes are added later, configure the SPA fallback in the Cloudflare Pages project settings or add a Pages-compatible `_redirects` file at that time.
 
 ## Troubleshooting
 
 If the Cloudflare log shows `Executing user deploy command: npx wrangler deploy`, the project is using the wrong deploy flow for this app. Remove the deploy command from the Cloudflare Pages build settings and redeploy.
-
-The Pages SPA fallback in `public/_redirects` is valid for Cloudflare Pages. The same rule can fail under `wrangler deploy` with an "Infinite loop detected" error because Wrangler is deploying a Workers static assets project instead of letting Pages publish the `dist` directory.
 
 ## Custom Domain
 
