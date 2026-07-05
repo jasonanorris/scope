@@ -252,7 +252,7 @@ h1 {
 
 .workspace-controls {
   display: grid;
-  grid-template-columns: auto minmax(240px, 420px) auto;
+  grid-template-columns: auto minmax(240px, 420px) auto auto;
   align-items: start;
   justify-content: space-between;
   gap: 14px;
@@ -274,9 +274,7 @@ h1 {
 .user-panel {
   display: grid;
   gap: 12px;
-  margin-bottom: 18px;
   padding: 14px;
-  border-top: 4px solid var(--violet);
 }
 
 .modal-backdrop {
@@ -297,6 +295,10 @@ h1 {
   border-radius: 8px;
   background: var(--panel);
   box-shadow: 0 24px 80px rgba(30, 43, 34, 0.24);
+}
+
+.user-modal {
+  width: min(880px, 100%);
 }
 
 .modal-header {
@@ -823,6 +825,7 @@ textarea:focus-visible {
   }
 
   .workspace-controls .primary-button,
+  .workspace-controls > button,
   .user-form button {
     width: 100%;
     justify-self: stretch;

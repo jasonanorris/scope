@@ -35,6 +35,7 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
+  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -75,19 +76,20 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isTaskFormOpen) {
+    if (!isTaskFormOpen && !isUsersModalOpen) {
       return undefined
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setIsTaskFormOpen(false)
+        setIsUsersModalOpen(false)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isTaskFormOpen])
+  }, [isTaskFormOpen, isUsersModalOpen])
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
@@ -324,21 +326,18 @@ function App() {
                 onClear={handleClearFilters}
                 statuses={statusOrder}
               />
-            </section>
 
-            {currentUserType !== 'standard' ? (
-              <UserManagement
-                canManageProjectUsers={canManageSelectedProjectUsers}
-                currentUserId={currentUserId}
-                currentUserType={currentUserType}
-                members={selectedProjectMembers}
-                onAddUser={handleAddUser}
-                onUpdateMembers={handleUpdateProjectMembers}
-                onUpdateUserType={handleUpdateUserType}
-                selectedProject={selectedProject}
-                users={users}
-              />
-            ) : null}
+              {currentUserType !== 'standard' ? (
+                <button
+                  type="button"
+                  onClick={() => setIsUsersModalOpen(true)}
+                  aria-expanded={isUsersModalOpen}
+                  aria-controls="users-dialog"
+                >
+                  Users
+                </button>
+              ) : null}
+            </section>
 
             <TaskBoard
               filters={filters}
@@ -386,6 +385,46 @@ function App() {
               onAddTask={handleAddTask}
               onCancel={() => setIsTaskFormOpen(false)}
               statuses={statusOrder}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {isUsersModalOpen && selectedProject ? (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsUsersModalOpen(false)
+            }
+          }}
+        >
+          <section
+            id="users-dialog"
+            className="task-modal user-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="users-modal-title"
+          >
+            <header className="modal-header">
+              <div>
+                <p className="eyebrow">Manage</p>
+                <h2 id="users-modal-title">Users</h2>
+              </div>
+              <button type="button" onClick={() => setIsUsersModalOpen(false)} aria-label="Close users">
+                ×
+              </button>
+            </header>
+            <UserManagement
+              canManageProjectUsers={canManageSelectedProjectUsers}
+              currentUserId={currentUserId}
+              currentUserType={currentUserType}
+              members={selectedProjectMembers}
+              onAddUser={handleAddUser}
+              onUpdateMembers={handleUpdateProjectMembers}
+              onUpdateUserType={handleUpdateUserType}
+              selectedProject={selectedProject}
+              users={users}
             />
           </section>
         </div>
