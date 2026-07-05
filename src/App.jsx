@@ -24,6 +24,7 @@ function App() {
   const [tasks, setTasks] = useLocalStorage('scope.tasks', sampleTasks)
   const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? '')
   const [filters, setFilters] = useState(defaultFilters)
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
@@ -75,6 +76,7 @@ function App() {
     }
 
     setTasks((currentTasks) => [nextTask, ...currentTasks])
+    setIsTaskFormOpen(false)
   }
 
   function handleTaskChange(taskId, updates) {
@@ -128,8 +130,17 @@ function App() {
 
         {selectedProject ? (
           <>
-            <section className="control-row" aria-label="Create and filter tasks">
-              <TaskForm onAddTask={handleAddTask} statuses={statusOrder} />
+            <section className="workspace-controls" aria-label="Task controls">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setIsTaskFormOpen((isOpen) => !isOpen)}
+                aria-expanded={isTaskFormOpen}
+                aria-controls="task-create-panel"
+              >
+                {isTaskFormOpen ? 'Close' : 'New task'}
+              </button>
+
               <FilterBar
                 filters={filters}
                 onChange={setFilters}
@@ -137,6 +148,16 @@ function App() {
                 statuses={statusOrder}
               />
             </section>
+
+            {isTaskFormOpen ? (
+              <section id="task-create-panel" className="task-create-panel" aria-label="Create a task">
+                <TaskForm
+                  onAddTask={handleAddTask}
+                  onCancel={() => setIsTaskFormOpen(false)}
+                  statuses={statusOrder}
+                />
+              </section>
+            ) : null}
 
             <TaskBoard
               filters={filters}

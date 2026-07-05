@@ -239,9 +239,11 @@ h1 {
   font-size: 1.25rem;
 }
 
-.control-row {
+.workspace-controls {
   display: grid;
-  grid-template-columns: minmax(320px, 1.4fr) minmax(260px, 0.8fr);
+  grid-template-columns: auto minmax(360px, 0.7fr);
+  align-items: start;
+  justify-content: space-between;
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -258,8 +260,14 @@ h1 {
   border-top: 4px solid var(--accent);
 }
 
+.task-create-panel {
+  margin-bottom: 18px;
+}
+
 .task-form {
   display: grid;
+  grid-template-columns: minmax(280px, 1.35fr) minmax(220px, 1fr) auto auto;
+  align-items: end;
   gap: 12px;
   padding: 16px;
 }
@@ -369,6 +377,11 @@ textarea:focus-visible {
 
 .primary-button:hover {
   background: var(--accent);
+}
+
+.secondary-button {
+  align-self: end;
+  padding: 9px 14px;
 }
 
 .board {
@@ -636,7 +649,7 @@ textarea:focus-visible {
   }
 
   .workspace-header,
-  .control-row {
+  .workspace-controls {
     display: grid;
   }
 
@@ -644,7 +657,11 @@ textarea:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .control-row {
+  .workspace-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .task-form {
     grid-template-columns: 1fr;
   }
 }

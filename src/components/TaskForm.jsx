@@ -9,7 +9,7 @@ const blankTask = {
   owner: '',
 }
 
-export function TaskForm({ onAddTask, statuses }) {
+export function TaskForm({ onAddTask, onCancel, statuses }) {
   const [draft, setDraft] = useState(blankTask)
 
   function updateDraft(field, value) {
@@ -100,6 +100,12 @@ export function TaskForm({ onAddTask, statuses }) {
       <button className="primary-button" type="submit">
         Add task
       </button>
+
+      {onCancel ? (
+        <button className="secondary-button" type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      ) : null}
     </form>
   )
 }
