@@ -7,6 +7,7 @@ const jsonHeaders = {
 
 const allowedStatuses = new Set(['Backlog', 'In Progress', 'Review', 'Done'])
 const allowedPriorities = new Set(['Low', 'Medium', 'High'])
+const allowedUserTypes = new Set(['standard', 'manager', 'admin'])
 let schemaReady
 
 function json(data, init = {}) {
@@ -75,6 +76,7 @@ function toUser(row) {
     id: row.id,
     email: row.email,
     name: row.name,
+    type: row.type ?? 'standard',
   }
 }
 
@@ -102,6 +104,7 @@ async function ensureSchema(db) {
           id TEXT PRIMARY KEY,
           email TEXT NOT NULL UNIQUE,
           name TEXT NOT NULL DEFAULT '',
+          type TEXT NOT NULL DEFAULT 'standard',
           created_by TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
@@ -145,6 +148,7 @@ async function ensureSchema(db) {
         )
       `),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_users_created_by ON users(created_by)'),
+      db.prepare('CREATE INDEX IF NOT EXISTS idx_users_type ON users(type)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)'),
@@ -156,6 +160,9 @@ async function ensureSchema(db) {
   }
 
   await schemaReady
+
+  await db.prepare("ALTER TABLE users ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'").run().catch(() => {})
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_type ON users(type)').run()
 }
 
 function validateTaskInput(input) {
@@ -177,15 +184,21 @@ function validateTaskInput(input) {
 async function ensureCurrentUser(db, userId) {
   const now = new Date().toISOString()
   const name = userId.includes('@') ? userId.split('@')[0] : 'Local user'
+  const existing = await db.prepare('SELECT id FROM users LIMIT 1').first()
+  const type = existing ? 'standard' : 'admin'
 
   await db
     .prepare(
-      `INSERT INTO users (id, email, name, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO users (id, email, name, type, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at`,
     )
-    .bind(userId, userId, name, userId, now, now)
+    .bind(userId, userId, name, type, userId, now, now)
     .run()
+}
+
+async function getCurrentUser(db, userId) {
+  return db.prepare('SELECT id, email, name, type FROM users WHERE id = ?').bind(userId).first()
 }
 
 async function ensureOwnedProjectMemberships(db, userId) {
@@ -269,6 +282,13 @@ async function loadWorkspace(db, userId) {
   await ensureCurrentUser(db, userId)
   await ensureSampleData(db, userId)
   await ensureOwnedProjectMemberships(db, userId)
+  const currentUser = await getCurrentUser(db, userId)
+  const isAdmin = currentUser?.type === 'admin'
+  const projectScope = isAdmin ? '1 = 1' : '(p.user_id = ? OR pm.user_id = ?)'
+  const projectBindings = isAdmin ? [] : [userId, userId]
+  const taskBindings = isAdmin ? [] : [userId, userId]
+  const userBindings = isAdmin ? [] : [userId, userId, userId, userId]
+  const memberBindings = isAdmin ? [] : [userId, userId]
 
   const [projectRows, taskRows, userRows, memberRows] = await Promise.all([
     db
@@ -276,10 +296,10 @@ async function loadWorkspace(db, userId) {
         `SELECT DISTINCT p.id, p.user_id, p.name, p.description, p.created_at
          FROM projects p
          LEFT JOIN project_members pm ON pm.project_id = p.id
-         WHERE p.user_id = ? OR pm.user_id = ?
+         WHERE ${projectScope}
          ORDER BY p.created_at ASC`,
       )
-      .bind(userId, userId)
+      .bind(...projectBindings)
       .all(),
     db
       .prepare(
@@ -287,34 +307,42 @@ async function loadWorkspace(db, userId) {
          FROM tasks t
          INNER JOIN projects p ON p.id = t.project_id
          LEFT JOIN project_members pm ON pm.project_id = p.id
-         WHERE p.user_id = ? OR pm.user_id = ?
+         WHERE ${projectScope}
          ORDER BY t.created_at DESC`,
       )
-      .bind(userId, userId)
+      .bind(...taskBindings)
       .all(),
     db
       .prepare(
-        `SELECT DISTINCT u.id, u.email, u.name
+        `SELECT DISTINCT u.id, u.email, u.name, u.type
          FROM users u
          LEFT JOIN project_members pm ON pm.user_id = u.id
          LEFT JOIN projects p ON p.id = pm.project_id
-         WHERE u.created_by = ? OR u.id = ? OR p.user_id = ? OR pm.project_id IN (
+         WHERE ${
+           isAdmin
+             ? '1 = 1'
+             : `u.created_by = ? OR u.id = ? OR p.user_id = ? OR pm.project_id IN (
            SELECT project_id FROM project_members WHERE user_id = ?
-         )
+         )`
+         }
          ORDER BY u.name ASC, u.email ASC`,
       )
-      .bind(userId, userId, userId, userId)
+      .bind(...userBindings)
       .all(),
     db
       .prepare(
         `SELECT pm.project_id, pm.user_id, pm.role
          FROM project_members pm
          INNER JOIN projects p ON p.id = pm.project_id
-         WHERE p.user_id = ? OR pm.project_id IN (
+         WHERE ${
+           isAdmin
+             ? '1 = 1'
+             : `p.user_id = ? OR pm.project_id IN (
            SELECT project_id FROM project_members WHERE user_id = ?
-         )`,
+         )`
+         }`,
       )
-      .bind(userId, userId)
+      .bind(...memberBindings)
       .all(),
   ])
 
@@ -324,6 +352,7 @@ async function loadWorkspace(db, userId) {
     users: userRows.results.map(toUser),
     projectMembers: memberRows.results.map(toProjectMember),
     currentUserId: userId,
+    currentUserType: currentUser?.type ?? 'standard',
   }
 }
 
@@ -375,6 +404,12 @@ async function handleApi(request, env) {
   }
 
   if (method === 'POST' && url.pathname === '/api/users') {
+    const currentUser = await getCurrentUser(env.DB, userId)
+
+    if (!['admin', 'manager'].includes(currentUser?.type)) {
+      return error('Only admins and managers can create users.', 403)
+    }
+
     const input = await readJson(request)
     const email = input?.email?.trim().toLowerCase()
 
@@ -384,17 +419,53 @@ async function handleApi(request, env) {
 
     const now = new Date().toISOString()
     const name = input?.name?.trim() || email.split('@')[0]
+    const requestedType = input?.type ?? 'standard'
+    const type = currentUser.type === 'admin' && allowedUserTypes.has(requestedType) ? requestedType : 'standard'
 
     await env.DB
       .prepare(
-        `INSERT INTO users (id, email, name, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email, updated_at = excluded.updated_at`,
+        `INSERT INTO users (id, email, name, type, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email, type = excluded.type, updated_at = excluded.updated_at`,
       )
-      .bind(email, email, name, userId, now, now)
+      .bind(email, email, name, type, userId, now, now)
       .run()
 
-    return json({ id: email, email, name }, { status: 201 })
+    return json({ id: email, email, name, type }, { status: 201 })
+  }
+
+  const userMatch = url.pathname.match(/^\/api\/users\/([^/]+)$/)
+
+  if (userMatch && method === 'PATCH') {
+    const currentUser = await getCurrentUser(env.DB, userId)
+
+    if (currentUser?.type !== 'admin') {
+      return error('Only admins can change user types.', 403)
+    }
+
+    const targetUserId = decodeURIComponent(userMatch[1]).toLowerCase()
+    const input = await readJson(request)
+    const nextType = input?.type
+
+    if (!allowedUserTypes.has(nextType)) {
+      return error('User type is not valid.')
+    }
+
+    await env.DB
+      .prepare('UPDATE users SET type = ?, updated_at = ? WHERE id = ?')
+      .bind(nextType, new Date().toISOString(), targetUserId)
+      .run()
+
+    const user = await env.DB
+      .prepare('SELECT id, email, name, type FROM users WHERE id = ?')
+      .bind(targetUserId)
+      .first()
+
+    if (!user) {
+      return error('User was not found.', 404)
+    }
+
+    return json(toUser(user))
   }
 
   const projectMembersMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/members$/)
@@ -402,17 +473,30 @@ async function handleApi(request, env) {
   if (projectMembersMatch && method === 'PUT') {
     const projectId = projectMembersMatch[1]
     const input = await readJson(request)
+    const currentUser = await getCurrentUser(env.DB, userId)
+
+    if (!['admin', 'manager'].includes(currentUser?.type)) {
+      return error('Only admins and managers can manage project users.', 403)
+    }
+
     const project = await env.DB
-      .prepare('SELECT id, user_id FROM projects WHERE id = ? AND user_id = ?')
-      .bind(projectId, userId)
+      .prepare(
+        `SELECT DISTINCT p.id, p.user_id
+         FROM projects p
+         LEFT JOIN project_members pm ON pm.project_id = p.id
+         WHERE p.id = ? AND (? = 'admin' OR p.user_id = ? OR pm.user_id = ?)`,
+      )
+      .bind(projectId, currentUser.type, userId, userId)
       .first()
 
     if (!project) {
-      return error('Only the project owner can manage members.', 403)
+      return error('You do not have permission to manage this project.', 403)
     }
 
     const requestedUserIds = Array.isArray(input?.userIds) ? input.userIds : []
-    const memberIds = [...new Set([...requestedUserIds, userId].map((id) => String(id).toLowerCase()))]
+    const memberIds = [
+      ...new Set([...requestedUserIds, project.user_id].map((id) => String(id).toLowerCase())),
+    ]
     const now = new Date().toISOString()
 
     if (memberIds.length > 0) {
@@ -437,7 +521,7 @@ async function handleApi(request, env) {
           .prepare(
             'INSERT INTO project_members (project_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
           )
-          .bind(projectId, memberId, memberId === userId ? 'owner' : 'member', now),
+          .bind(projectId, memberId, memberId === project.user_id ? 'owner' : 'member', now),
       ),
     )
 

@@ -285,12 +285,13 @@ h1 {
 
 .user-form {
   display: grid;
-  grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   align-items: end;
   gap: 10px;
 }
 
 .user-form button {
+  justify-self: start;
   padding: 9px 12px;
 }
 
@@ -301,7 +302,7 @@ h1 {
 }
 
 .member-row {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 54px;
@@ -311,6 +312,10 @@ h1 {
   background: #ffffff;
   color: var(--text);
   font-weight: 400;
+}
+
+.user-type-select {
+  min-width: 116px;
 }
 
 .member-row input {

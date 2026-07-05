@@ -8,6 +8,7 @@ import {
   getWorkspace,
   updateProjectMembers,
   updateTask,
+  updateUser,
 } from './api/workspaceApi.js'
 import { FilterBar } from './components/FilterBar.jsx'
 import { ProjectSidebar } from './components/ProjectSidebar.jsx'
@@ -30,6 +31,7 @@ function App() {
   const [users, setUsers] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
   const [currentUserId, setCurrentUserId] = useState('')
+  const [currentUserType, setCurrentUserType] = useState('standard')
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
@@ -52,6 +54,7 @@ function App() {
         setUsers(data.users ?? [])
         setProjectMembers(data.projectMembers ?? [])
         setCurrentUserId(data.currentUserId ?? '')
+        setCurrentUserType(data.currentUserType ?? 'standard')
         setSelectedProjectId((currentProjectId) => currentProjectId || data.projects[0]?.id || '')
       } catch (error) {
         if (isMounted) {
@@ -76,7 +79,11 @@ function App() {
   const selectedProjectMembers = projectMembers.filter(
     (member) => member.projectId === selectedProject?.id,
   )
-  const isSelectedProjectOwner = selectedProject?.ownerId === currentUserId
+  const canManageSelectedProjectUsers =
+    currentUserType === 'admin' ||
+    (currentUserType === 'manager' &&
+      selectedProjectMembers.some((member) => member.userId === currentUserId)) ||
+    (currentUserType === 'manager' && selectedProject?.ownerId === currentUserId)
 
   const visibleTasks = useMemo(() => {
     const search = filters.search.trim().toLowerCase()
@@ -176,6 +183,23 @@ function App() {
       setErrorMessage('')
     } catch (error) {
       setProjectMembers(previousMembers)
+      setErrorMessage(error.message)
+    }
+  }
+
+  async function handleUpdateUserType(userId, type) {
+    const previousUsers = users
+
+    setUsers((currentUsers) =>
+      currentUsers.map((user) => (user.id === userId ? { ...user, type } : user)),
+    )
+
+    try {
+      const savedUser = await updateUser(userId, { type })
+      setUsers((currentUsers) => currentUsers.map((user) => (user.id === userId ? savedUser : user)))
+      setErrorMessage('')
+    } catch (error) {
+      setUsers(previousUsers)
       setErrorMessage(error.message)
     }
   }
@@ -297,15 +321,19 @@ function App() {
               </section>
             ) : null}
 
-            <UserManagement
-              currentUserId={currentUserId}
-              isProjectOwner={isSelectedProjectOwner}
-              members={selectedProjectMembers}
-              onAddUser={handleAddUser}
-              onUpdateMembers={handleUpdateProjectMembers}
-              selectedProject={selectedProject}
-              users={users}
-            />
+            {currentUserType !== 'standard' ? (
+              <UserManagement
+                canManageProjectUsers={canManageSelectedProjectUsers}
+                currentUserId={currentUserId}
+                currentUserType={currentUserType}
+                members={selectedProjectMembers}
+                onAddUser={handleAddUser}
+                onUpdateMembers={handleUpdateProjectMembers}
+                onUpdateUserType={handleUpdateUserType}
+                selectedProject={selectedProject}
+                users={users}
+              />
+            ) : null}
 
             <TaskBoard
               filters={filters}

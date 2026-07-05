@@ -44,6 +44,13 @@ export function updateProjectMembers(projectId, userIds) {
   })
 }
 
+export function updateUser(userId, updates) {
+  return requestJson(`/api/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  })
+}
+
 export function createTask(task) {
   return requestJson('/api/tasks', {
     method: 'POST',
