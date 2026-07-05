@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createProject, createTask, deleteTask, getWorkspace, updateTask } from './api/workspaceApi.js'
+import {
+  createProject,
+  createTask,
+  createUser,
+  deleteTask,
+  getWorkspace,
+  updateProjectMembers,
+  updateTask,
+} from './api/workspaceApi.js'
 import { FilterBar } from './components/FilterBar.jsx'
 import { ProjectSidebar } from './components/ProjectSidebar.jsx'
 import { SearchBar } from './components/SearchBar.jsx'
 import { TaskBoard } from './components/TaskBoard.jsx'
 import { TaskForm } from './components/TaskForm.jsx'
+import { UserManagement } from './components/UserManagement.jsx'
 
 const statusOrder = ['Backlog', 'In Progress', 'Review', 'Done']
 
@@ -18,6 +27,9 @@ const defaultFilters = {
 function App() {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
+  const [users, setUsers] = useState([])
+  const [projectMembers, setProjectMembers] = useState([])
+  const [currentUserId, setCurrentUserId] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
@@ -37,6 +49,9 @@ function App() {
 
         setProjects(data.projects)
         setTasks(data.tasks)
+        setUsers(data.users ?? [])
+        setProjectMembers(data.projectMembers ?? [])
+        setCurrentUserId(data.currentUserId ?? '')
         setSelectedProjectId((currentProjectId) => currentProjectId || data.projects[0]?.id || '')
       } catch (error) {
         if (isMounted) {
@@ -58,6 +73,10 @@ function App() {
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
+  const selectedProjectMembers = projectMembers.filter(
+    (member) => member.projectId === selectedProject?.id,
+  )
+  const isSelectedProjectOwner = selectedProject?.ownerId === currentUserId
 
   const visibleTasks = useMemo(() => {
     const search = filters.search.trim().toLowerCase()
@@ -112,6 +131,51 @@ function App() {
       setIsTaskFormOpen(false)
       setErrorMessage('')
     } catch (error) {
+      setErrorMessage(error.message)
+    }
+  }
+
+  async function handleAddUser(userInput) {
+    try {
+      const savedUser = await createUser(userInput)
+      setUsers((currentUsers) => {
+        const exists = currentUsers.some((user) => user.id === savedUser.id)
+        return exists
+          ? currentUsers.map((user) => (user.id === savedUser.id ? savedUser : user))
+          : [...currentUsers, savedUser]
+      })
+      setErrorMessage('')
+    } catch (error) {
+      setErrorMessage(error.message)
+    }
+  }
+
+  async function handleUpdateProjectMembers(userIds) {
+    if (!selectedProject) {
+      return
+    }
+
+    const previousMembers = projectMembers
+    const nextMembers = userIds.map((userId) => ({
+      projectId: selectedProject.id,
+      userId,
+      role: userId === currentUserId ? 'owner' : 'member',
+    }))
+
+    setProjectMembers((currentMembers) => [
+      ...currentMembers.filter((member) => member.projectId !== selectedProject.id),
+      ...nextMembers,
+    ])
+
+    try {
+      const savedMembers = await updateProjectMembers(selectedProject.id, userIds)
+      setProjectMembers((currentMembers) => [
+        ...currentMembers.filter((member) => member.projectId !== selectedProject.id),
+        ...savedMembers,
+      ])
+      setErrorMessage('')
+    } catch (error) {
+      setProjectMembers(previousMembers)
       setErrorMessage(error.message)
     }
   }
@@ -232,6 +296,16 @@ function App() {
                 />
               </section>
             ) : null}
+
+            <UserManagement
+              currentUserId={currentUserId}
+              isProjectOwner={isSelectedProjectOwner}
+              members={selectedProjectMembers}
+              onAddUser={handleAddUser}
+              onUpdateMembers={handleUpdateProjectMembers}
+              selectedProject={selectedProject}
+              users={users}
+            />
 
             <TaskBoard
               filters={filters}

@@ -260,6 +260,7 @@ h1 {
 }
 
 .task-form,
+.user-panel,
 .empty-state {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -272,6 +273,77 @@ h1 {
 
 .task-create-panel {
   margin-bottom: 18px;
+}
+
+.user-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border-top: 4px solid var(--violet);
+}
+
+.user-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.user-form button {
+  padding: 9px 12px;
+}
+
+.member-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.member-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.member-row input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.member-row strong,
+.member-row small {
+  display: block;
+}
+
+.member-row strong {
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.member-row small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.member-row em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--violet-wash);
+  color: var(--violet);
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .task-form {
@@ -703,6 +775,10 @@ textarea:focus-visible {
 
   .task-form-main,
   .task-form-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .user-form {
     grid-template-columns: 1fr;
   }
 

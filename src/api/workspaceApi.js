@@ -30,6 +30,20 @@ export function createProject(project) {
   })
 }
 
+export function createUser(user) {
+  return requestJson('/api/users', {
+    method: 'POST',
+    body: JSON.stringify(user),
+  })
+}
+
+export function updateProjectMembers(projectId, userIds) {
+  return requestJson(`/api/projects/${projectId}/members`, {
+    method: 'PUT',
+    body: JSON.stringify({ userIds }),
+  })
+}
+
 export function createTask(task) {
   return requestJson('/api/tasks', {
     method: 'POST',
