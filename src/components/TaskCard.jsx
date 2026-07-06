@@ -33,17 +33,22 @@ function getDueTone(value, status) {
 
 export function TaskCard({ task, statuses, onDelete, onTaskChange }) {
   const dueTone = getDueTone(task.dueDate, task.status)
+  const taskInitial = task.title.trim().charAt(0).toUpperCase() || 'T'
 
   return (
     <article className="task-card">
       <div className="task-card-header">
-        <h3>{task.title}</h3>
+        <span className="task-initial" aria-hidden="true">
+          {taskInitial}
+        </span>
+        <div>
+          <h3>{task.title}</h3>
+          {task.description ? <p>{task.description}</p> : null}
+        </div>
         <button type="button" onClick={() => onDelete(task.id)} aria-label={`Delete ${task.title}`}>
           ×
         </button>
       </div>
-
-      {task.description ? <p>{task.description}</p> : null}
 
       <div className="task-meta" aria-label="Task details">
         <span className={priorityClass[task.priority]}>{task.priority}</span>
