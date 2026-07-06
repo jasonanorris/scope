@@ -33,7 +33,6 @@ function getDueTone(value, status) {
 
 export function TaskCard({ task, onOpenTask }) {
   const dueTone = getDueTone(task.dueDate, task.status)
-  const taskInitial = task.title.trim().charAt(0).toUpperCase() || 'T'
   const taskHref = `?task=${encodeURIComponent(task.id)}`
 
   return (
@@ -50,9 +49,6 @@ export function TaskCard({ task, onOpenTask }) {
       }}
     >
       <div className="task-card-header">
-        <span className="task-initial" aria-hidden="true">
-          {taskInitial}
-        </span>
         <div>
           <h3>{task.title}</h3>
           {task.description ? <p>{task.description}</p> : null}

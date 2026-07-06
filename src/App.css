@@ -743,36 +743,8 @@ textarea:focus-visible {
 
 .task-card-header {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-}
-
-.task-initial {
-  width: 36px;
-  height: 36px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), var(--blue));
-  color: #ffffff;
-  font-size: 0.86rem;
-  font-weight: 800;
-}
-
-.task-list .task-card:nth-child(2n) .task-initial {
-  background: linear-gradient(135deg, var(--green), var(--accent));
-}
-
-.task-list .task-card:nth-child(3n) .task-initial {
-  background: linear-gradient(135deg, var(--gold), #ff6b1a);
-}
-
-.task-list .task-card:nth-child(4n) .task-initial {
-  background: linear-gradient(135deg, var(--violet), #d946ef);
-}
-
-.task-list .task-card:nth-child(5n) .task-initial {
-  background: linear-gradient(135deg, var(--blue), #2563eb);
 }
 
 .task-meta {
