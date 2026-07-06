@@ -159,13 +159,6 @@ function App() {
     })
   }, [filters, selectedProjectTasks])
 
-  const projectCounts = useMemo(() => {
-    return tasks.reduce((counts, task) => {
-      counts[task.projectId] = (counts[task.projectId] ?? 0) + 1
-      return counts
-    }, {})
-  }, [tasks])
-
   async function handleAddProject(name) {
     try {
       const nextProject = await createProject({
@@ -305,11 +298,14 @@ function App() {
   return (
     <div className="app-shell">
       <ProjectSidebar
+        canManageUsers={currentUserType !== 'standard'}
+        isUsersModalOpen={isUsersModalOpen}
+        onAddProject={handleAddProject}
+        onHome={handleCloseTask}
+        onOpenUsers={() => setIsUsersModalOpen(true)}
+        onSelectProject={handleSelectProject}
         projects={projects}
         selectedProjectId={selectedProject?.id}
-        taskCounts={projectCounts}
-        onAddProject={handleAddProject}
-        onSelectProject={handleSelectProject}
       />
 
       <main className="workspace" aria-labelledby={selectedTaskId ? 'task-detail-title' : 'workspace-title'}>
@@ -322,7 +318,7 @@ function App() {
         {!selectedTaskId ? (
           <header className="workspace-header">
             <div>
-              <p className="eyebrow">Scope</p>
+              <span className="header-accent" aria-hidden="true" />
               <h1 id="workspace-title">{selectedProject?.name ?? 'Projects'}</h1>
               <p className="workspace-summary">
                 {selectedProject?.description ?? 'Create a project to begin tracking work.'}
@@ -381,28 +377,20 @@ function App() {
                 New task
               </button>
 
-              <SearchBar
-                value={filters.search}
-                onChange={(search) => setFilters((currentFilters) => ({ ...currentFilters, search }))}
-              />
+              <div className="control-group">
+                <SearchBar
+                  value={filters.search}
+                  onChange={(search) => setFilters((currentFilters) => ({ ...currentFilters, search }))}
+                />
 
-              <FilterBar
-                filters={filters}
-                onChange={setFilters}
-                onClear={handleClearFilters}
-                statuses={statusOrder}
-              />
+                <FilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  onClear={handleClearFilters}
+                  statuses={statusOrder}
+                />
+              </div>
 
-              {currentUserType !== 'standard' ? (
-                <button
-                  type="button"
-                  onClick={() => setIsUsersModalOpen(true)}
-                  aria-expanded={isUsersModalOpen}
-                  aria-controls="users-dialog"
-                >
-                  Users
-                </button>
-              ) : null}
             </section>
 
             <TaskBoard
