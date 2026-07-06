@@ -6,8 +6,7 @@ export function TaskBoard({
   statuses,
   tasks,
   onClearFilters,
-  onDeleteTask,
-  onTaskChange,
+  onOpenTask,
 }) {
   const hasFilters = filters.search || filters.status !== 'All' || filters.priority !== 'All'
 
@@ -42,9 +41,7 @@ export function TaskBoard({
                 columnTasks.map((task) => (
                   <TaskCard
                     key={task.id}
-                    onDelete={onDeleteTask}
-                    onTaskChange={onTaskChange}
-                    statuses={statuses}
+                    onOpenTask={onOpenTask}
                     task={task}
                   />
                 ))

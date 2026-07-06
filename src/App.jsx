@@ -4,7 +4,6 @@ import {
   createProject,
   createTask,
   createUser,
-  deleteTask,
   getWorkspace,
   updateProjectMembers,
   updateTask,
@@ -14,6 +13,7 @@ import { FilterBar } from './components/FilterBar.jsx'
 import { ProjectSidebar } from './components/ProjectSidebar.jsx'
 import { SearchBar } from './components/SearchBar.jsx'
 import { TaskBoard } from './components/TaskBoard.jsx'
+import { TaskDetailPage } from './components/TaskDetailPage.jsx'
 import { TaskForm } from './components/TaskForm.jsx'
 import { UserManagement } from './components/UserManagement.jsx'
 
@@ -25,6 +25,22 @@ const defaultFilters = {
   priority: 'All',
 }
 
+function getTaskIdFromUrl() {
+  return new URLSearchParams(window.location.search).get('task') ?? ''
+}
+
+function updateTaskUrl(taskId) {
+  const url = new URL(window.location.href)
+
+  if (taskId) {
+    url.searchParams.set('task', taskId)
+  } else {
+    url.searchParams.delete('task')
+  }
+
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
 function App() {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
@@ -34,6 +50,7 @@ function App() {
   const [currentUserType, setCurrentUserType] = useState('standard')
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [filters, setFilters] = useState(defaultFilters)
+  const [selectedTaskId, setSelectedTaskId] = useState(() => getTaskIdFromUrl())
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false)
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -45,6 +62,8 @@ function App() {
     async function loadWorkspace() {
       try {
         const data = await getWorkspace()
+        const urlTaskId = getTaskIdFromUrl()
+        const linkedTask = data.tasks.find((task) => task.id === urlTaskId)
 
         if (!isMounted) {
           return
@@ -56,7 +75,9 @@ function App() {
         setProjectMembers(data.projectMembers ?? [])
         setCurrentUserId(data.currentUserId ?? '')
         setCurrentUserType(data.currentUserType ?? 'standard')
-        setSelectedProjectId((currentProjectId) => currentProjectId || data.projects[0]?.id || '')
+        setSelectedProjectId(
+          (currentProjectId) => currentProjectId || linkedTask?.projectId || data.projects[0]?.id || '',
+        )
       } catch (error) {
         if (isMounted) {
           setErrorMessage(error.message)
@@ -76,6 +97,21 @@ function App() {
   }, [])
 
   useEffect(() => {
+    function handlePopState() {
+      const taskId = getTaskIdFromUrl()
+      setSelectedTaskId(taskId)
+
+      const linkedTask = tasks.find((task) => task.id === taskId)
+      if (linkedTask) {
+        setSelectedProjectId(linkedTask.projectId)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [tasks])
+
+  useEffect(() => {
     if (!isTaskFormOpen && !isUsersModalOpen) {
       return undefined
     }
@@ -92,6 +128,8 @@ function App() {
   }, [isTaskFormOpen, isUsersModalOpen])
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId)
+  const selectedTaskProject = projects.find((project) => project.id === selectedTask?.projectId)
   const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
   const selectedProjectMembers = projectMembers.filter(
     (member) => member.projectId === selectedProject?.id,
@@ -235,25 +273,29 @@ function App() {
     } catch (error) {
       setTasks(previousTasks)
       setErrorMessage(error.message)
-    }
-  }
-
-  async function handleDeleteTask(taskId) {
-    const previousTasks = tasks
-
-    setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
-
-    try {
-      await deleteTask(taskId)
-      setErrorMessage('')
-    } catch (error) {
-      setTasks(previousTasks)
-      setErrorMessage(error.message)
+      throw error
     }
   }
 
   function handleClearFilters() {
     setFilters(defaultFilters)
+  }
+
+  function handleSelectProject(projectId) {
+    setSelectedProjectId(projectId)
+    setSelectedTaskId('')
+    updateTaskUrl('')
+  }
+
+  function handleOpenTask(task) {
+    setSelectedTaskId(task.id)
+    setSelectedProjectId(task.projectId)
+    updateTaskUrl(task.id)
+  }
+
+  function handleCloseTask() {
+    setSelectedTaskId('')
+    updateTaskUrl('')
   }
 
   return (
@@ -263,45 +305,65 @@ function App() {
         selectedProjectId={selectedProject?.id}
         taskCounts={projectCounts}
         onAddProject={handleAddProject}
-        onSelectProject={setSelectedProjectId}
+        onSelectProject={handleSelectProject}
       />
 
-      <main className="workspace" aria-labelledby="workspace-title">
+      <main className="workspace" aria-labelledby={selectedTaskId ? 'task-detail-title' : 'workspace-title'}>
         {errorMessage ? (
           <div className="notice" role="alert">
             {errorMessage}
           </div>
         ) : null}
 
-        <header className="workspace-header">
-          <div>
-            <p className="eyebrow">Scope</p>
-            <h1 id="workspace-title">{selectedProject?.name ?? 'Projects'}</h1>
-            <p className="workspace-summary">
-              {selectedProject?.description ?? 'Create a project to begin tracking work.'}
-            </p>
-          </div>
-          <div className="summary-strip" aria-label="Project summary">
-            <span>
-              <strong>{selectedProjectTasks.length}</strong>
-              Tasks
-            </span>
-            <span>
-              <strong>{selectedProjectTasks.filter((task) => task.status !== 'Done').length}</strong>
-              Open
-            </span>
-            <span>
-              <strong>{selectedProjectTasks.filter((task) => task.priority === 'High').length}</strong>
-              High priority
-            </span>
-          </div>
-        </header>
+        {!selectedTaskId ? (
+          <header className="workspace-header">
+            <div>
+              <p className="eyebrow">Scope</p>
+              <h1 id="workspace-title">{selectedProject?.name ?? 'Projects'}</h1>
+              <p className="workspace-summary">
+                {selectedProject?.description ?? 'Create a project to begin tracking work.'}
+              </p>
+            </div>
+            <div className="summary-strip" aria-label="Project summary">
+              <span>
+                <strong>{selectedProjectTasks.length}</strong>
+                Tasks
+              </span>
+              <span>
+                <strong>{selectedProjectTasks.filter((task) => task.status !== 'Done').length}</strong>
+                Open
+              </span>
+              <span>
+                <strong>{selectedProjectTasks.filter((task) => task.priority === 'High').length}</strong>
+                High priority
+              </span>
+            </div>
+          </header>
+        ) : null}
 
         {isLoading ? (
           <section className="empty-state">
             <h2>Loading workspace</h2>
             <p>Fetching your projects and tasks from Cloudflare D1.</p>
           </section>
+        ) : selectedTaskId ? (
+          selectedTask ? (
+            <TaskDetailPage
+              onBack={handleCloseTask}
+              onSave={handleTaskChange}
+              project={selectedTaskProject}
+              statuses={statusOrder}
+              task={selectedTask}
+            />
+          ) : (
+            <section className="empty-state">
+              <h2>Task not found</h2>
+              <p>This task may have been moved or removed.</p>
+              <button type="button" onClick={handleCloseTask}>
+                Back to board
+              </button>
+            </section>
+          )
         ) : selectedProject ? (
           <>
             <section className="workspace-controls" aria-label="Task controls">
@@ -342,8 +404,7 @@ function App() {
             <TaskBoard
               filters={filters}
               onClearFilters={handleClearFilters}
-              onDeleteTask={handleDeleteTask}
-              onTaskChange={handleTaskChange}
+              onOpenTask={handleOpenTask}
               statuses={statusOrder}
               tasks={visibleTasks}
             />

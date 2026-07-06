@@ -441,8 +441,7 @@ h1 {
 }
 
 .form-grid,
-.form-actions,
-.task-actions {
+.form-actions {
   display: grid;
   gap: 10px;
 }
@@ -457,8 +456,7 @@ h1 {
   justify-content: end;
 }
 
-.filter-strip,
-.task-actions {
+.filter-strip {
   display: grid;
   gap: 10px;
 }
@@ -470,10 +468,6 @@ h1 {
 
 .search-field {
   min-width: 0;
-}
-
-.task-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 label {
@@ -708,6 +702,9 @@ textarea:focus-visible {
   background: #171818;
   box-shadow: none;
   position: relative;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -746,7 +743,7 @@ textarea:focus-visible {
 
 .task-card-header {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: start;
 }
 
@@ -776,22 +773,6 @@ textarea:focus-visible {
 
 .task-list .task-card:nth-child(5n) .task-initial {
   background: linear-gradient(135deg, var(--blue), #2563eb);
-}
-
-.task-card-header button {
-  width: 30px;
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  color: var(--text-muted);
-  line-height: 1;
-  font-weight: 700;
-}
-
-.task-card-header button:hover {
-  border-color: rgba(200, 85, 61, 0.34);
-  background: var(--coral-wash);
-  color: var(--coral);
 }
 
 .task-meta {
@@ -869,6 +850,108 @@ textarea:focus-visible {
 .empty-state button {
   margin-top: 8px;
   padding: 8px 12px;
+}
+
+.task-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.task-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-detail-header h1 {
+  max-width: 860px;
+}
+
+.text-button {
+  min-height: auto;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.text-button:hover:not(:disabled) {
+  background: transparent;
+  color: var(--accent-strong);
+  box-shadow: none;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.task-detail-panel {
+  display: grid;
+  gap: 18px;
+  max-width: 980px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.detail-description {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-description h2,
+.detail-description p,
+.detail-field-list dt,
+.detail-field-list dd {
+  margin: 0;
+}
+
+.detail-description h2 {
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.detail-description p {
+  max-width: 760px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.detail-field-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-field-list > div {
+  display: grid;
+  gap: 5px;
+  min-height: 70px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121313;
+}
+
+.detail-field-list dt {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.detail-field-list dd {
+  color: var(--text-strong);
+  font-size: 0.95rem;
 }
 
 .sr-only {
@@ -968,6 +1051,23 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   }
 
+  .task-detail-header {
+    display: grid;
+  }
+
+  .detail-actions {
+    justify-content: stretch;
+  }
+
+  .detail-actions button,
+  .task-detail-header > .primary-button {
+    width: 100%;
+  }
+
+  .detail-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .member-list {
     grid-template-columns: 1fr;
   }
@@ -990,16 +1090,20 @@ textarea:focus-visible {
   }
 
   .filter-strip button,
-  .form-actions button,
-  .task-actions select {
+  .form-actions button {
     width: 100%;
   }
 
-  .task-actions {
+  .form-actions {
     grid-template-columns: 1fr;
   }
 
-  .form-actions {
+  .detail-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .detail-field-grid {
     grid-template-columns: 1fr;
   }
 

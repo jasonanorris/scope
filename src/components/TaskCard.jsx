@@ -31,12 +31,24 @@ function getDueTone(value, status) {
   return ''
 }
 
-export function TaskCard({ task, statuses, onDelete, onTaskChange }) {
+export function TaskCard({ task, onOpenTask }) {
   const dueTone = getDueTone(task.dueDate, task.status)
   const taskInitial = task.title.trim().charAt(0).toUpperCase() || 'T'
+  const taskHref = `?task=${encodeURIComponent(task.id)}`
 
   return (
-    <article className="task-card">
+    <a
+      className="task-card"
+      href={taskHref}
+      onClick={(event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return
+        }
+
+        event.preventDefault()
+        onOpenTask(task)
+      }}
+    >
       <div className="task-card-header">
         <span className="task-initial" aria-hidden="true">
           {taskInitial}
@@ -45,9 +57,6 @@ export function TaskCard({ task, statuses, onDelete, onTaskChange }) {
           <h3>{task.title}</h3>
           {task.description ? <p>{task.description}</p> : null}
         </div>
-        <button type="button" onClick={() => onDelete(task.id)} aria-label={`Delete ${task.title}`}>
-          ×
-        </button>
       </div>
 
       <div className="task-meta" aria-label="Task details">
@@ -55,31 +64,6 @@ export function TaskCard({ task, statuses, onDelete, onTaskChange }) {
         <span className={dueTone}>{formatDueDate(task.dueDate)}</span>
         <span>{task.owner || 'Unassigned'}</span>
       </div>
-
-      <div className="task-actions">
-        <label>
-          <span className="sr-only">Status for {task.title}</span>
-          <select
-            value={task.status}
-            onChange={(event) => onTaskChange(task.id, { status: event.target.value })}
-          >
-            {statuses.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Priority for {task.title}</span>
-          <select
-            value={task.priority}
-            onChange={(event) => onTaskChange(task.id, { priority: event.target.value })}
-          >
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-        </label>
-      </div>
-    </article>
+    </a>
   )
 }
