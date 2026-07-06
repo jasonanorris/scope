@@ -1,7 +1,3 @@
-ALTER TABLE users ADD COLUMN type TEXT NOT NULL DEFAULT 'standard';
-
-UPDATE users
-SET type = 'admin'
-WHERE id = created_by;
-
-CREATE INDEX IF NOT EXISTS idx_users_type ON users(type);
+-- No-op retained for migration ordering.
+-- The integer-id reset in 0005 recreates users.type from scratch.
+SELECT 1;
