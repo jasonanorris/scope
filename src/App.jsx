@@ -25,6 +25,10 @@ const defaultFilters = {
   priority: 'All',
 }
 
+function sameId(left, right) {
+  return String(left) === String(right)
+}
+
 function getTaskIdFromUrl() {
   return new URLSearchParams(window.location.search).get('task') ?? ''
 }
@@ -63,7 +67,7 @@ function App() {
       try {
         const data = await getWorkspace()
         const urlTaskId = getTaskIdFromUrl()
-        const linkedTask = data.tasks.find((task) => task.id === urlTaskId)
+        const linkedTask = data.tasks.find((task) => sameId(task.id, urlTaskId))
 
         if (!isMounted) {
           return
@@ -101,7 +105,7 @@ function App() {
       const taskId = getTaskIdFromUrl()
       setSelectedTaskId(taskId)
 
-      const linkedTask = tasks.find((task) => task.id === taskId)
+      const linkedTask = tasks.find((task) => sameId(task.id, taskId))
       if (linkedTask) {
         setSelectedProjectId(linkedTask.projectId)
       }
@@ -127,18 +131,18 @@ function App() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isTaskFormOpen, isUsersModalOpen])
 
-  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0]
-  const selectedTask = tasks.find((task) => task.id === selectedTaskId)
-  const selectedTaskProject = projects.find((project) => project.id === selectedTask?.projectId)
-  const selectedProjectTasks = tasks.filter((task) => task.projectId === selectedProject?.id)
+  const selectedProject = projects.find((project) => sameId(project.id, selectedProjectId)) ?? projects[0]
+  const selectedTask = tasks.find((task) => sameId(task.id, selectedTaskId))
+  const selectedTaskProject = projects.find((project) => sameId(project.id, selectedTask?.projectId))
+  const selectedProjectTasks = tasks.filter((task) => sameId(task.projectId, selectedProject?.id))
   const selectedProjectMembers = projectMembers.filter(
-    (member) => member.projectId === selectedProject?.id,
+    (member) => sameId(member.projectId, selectedProject?.id),
   )
   const canManageSelectedProjectUsers =
     currentUserType === 'admin' ||
     (currentUserType === 'manager' &&
-      selectedProjectMembers.some((member) => member.userId === currentUserId)) ||
-    (currentUserType === 'manager' && selectedProject?.ownerId === currentUserId)
+      selectedProjectMembers.some((member) => sameId(member.userId, currentUserId))) ||
+    (currentUserType === 'manager' && sameId(selectedProject?.ownerId, currentUserId))
 
   const visibleTasks = useMemo(() => {
     const search = filters.search.trim().toLowerCase()
@@ -201,9 +205,9 @@ function App() {
     try {
       const savedUser = await createUser(userInput)
       setUsers((currentUsers) => {
-        const exists = currentUsers.some((user) => user.id === savedUser.id)
+        const exists = currentUsers.some((user) => sameId(user.id, savedUser.id))
         return exists
-          ? currentUsers.map((user) => (user.id === savedUser.id ? savedUser : user))
+          ? currentUsers.map((user) => (sameId(user.id, savedUser.id) ? savedUser : user))
           : [...currentUsers, savedUser]
       })
       setErrorMessage('')
@@ -221,18 +225,18 @@ function App() {
     const nextMembers = userIds.map((userId) => ({
       projectId: selectedProject.id,
       userId,
-      role: userId === currentUserId ? 'owner' : 'member',
+      role: sameId(userId, currentUserId) ? 'owner' : 'member',
     }))
 
     setProjectMembers((currentMembers) => [
-      ...currentMembers.filter((member) => member.projectId !== selectedProject.id),
+      ...currentMembers.filter((member) => !sameId(member.projectId, selectedProject.id)),
       ...nextMembers,
     ])
 
     try {
       const savedMembers = await updateProjectMembers(selectedProject.id, userIds)
       setProjectMembers((currentMembers) => [
-        ...currentMembers.filter((member) => member.projectId !== selectedProject.id),
+        ...currentMembers.filter((member) => !sameId(member.projectId, selectedProject.id)),
         ...savedMembers,
       ])
       setErrorMessage('')
@@ -246,12 +250,12 @@ function App() {
     const previousUsers = users
 
     setUsers((currentUsers) =>
-      currentUsers.map((user) => (user.id === userId ? { ...user, type } : user)),
+      currentUsers.map((user) => (sameId(user.id, userId) ? { ...user, type } : user)),
     )
 
     try {
       const savedUser = await updateUser(userId, { type })
-      setUsers((currentUsers) => currentUsers.map((user) => (user.id === userId ? savedUser : user)))
+      setUsers((currentUsers) => currentUsers.map((user) => (sameId(user.id, userId) ? savedUser : user)))
       setErrorMessage('')
     } catch (error) {
       setUsers(previousUsers)
@@ -263,12 +267,12 @@ function App() {
     const previousTasks = tasks
 
     setTasks((currentTasks) =>
-      currentTasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
+      currentTasks.map((task) => (sameId(task.id, taskId) ? { ...task, ...updates } : task)),
     )
 
     try {
       const savedTask = await updateTask(taskId, updates)
-      setTasks((currentTasks) => currentTasks.map((task) => (task.id === taskId ? savedTask : task)))
+      setTasks((currentTasks) => currentTasks.map((task) => (sameId(task.id, taskId) ? savedTask : task)))
       setErrorMessage('')
     } catch (error) {
       setTasks(previousTasks)

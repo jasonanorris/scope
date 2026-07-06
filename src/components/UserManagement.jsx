@@ -12,7 +12,7 @@ export function UserManagement({
   users,
 }) {
   const [draft, setDraft] = useState({ name: '', email: '', title: '', type: 'standard' })
-  const memberIds = new Set(members.map((member) => member.userId))
+  const memberIds = new Set(members.map((member) => String(member.userId)))
   const isAdmin = currentUserType === 'admin'
 
   function handleSubmit(event) {
@@ -31,9 +31,10 @@ export function UserManagement({
       return
     }
 
-    const nextMemberIds = memberIds.has(userId)
-      ? [...memberIds].filter((memberId) => memberId !== userId)
-      : [...memberIds, userId]
+    const userKey = String(userId)
+    const nextMemberIds = memberIds.has(userKey)
+      ? [...memberIds].filter((memberId) => memberId !== userKey)
+      : [...memberIds, userKey]
 
     onUpdateMembers(nextMemberIds)
   }
@@ -103,14 +104,15 @@ export function UserManagement({
 
       <div className="member-list" aria-label={`Assign users to ${selectedProject.name}`}>
         {users.map((user) => {
-          const isOwner = user.id === selectedProject.ownerId
-          const isCurrentUser = user.id === currentUserId
+          const userKey = String(user.id)
+          const isOwner = userKey === String(selectedProject.ownerId)
+          const isCurrentUser = userKey === String(currentUserId)
 
           return (
             <label className="member-row" key={user.id}>
               <input
                 type="checkbox"
-                checked={memberIds.has(user.id)}
+                checked={memberIds.has(userKey)}
                 disabled={!canManageProjectUsers || isOwner || isCurrentUser}
                 onChange={() => toggleMember(user.id)}
               />

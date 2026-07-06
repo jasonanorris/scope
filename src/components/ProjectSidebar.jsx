@@ -43,9 +43,11 @@ export function ProjectSidebar({
             <li key={project.id}>
               <button
                 type="button"
-                className={project.id === selectedProjectId ? 'project-link active' : 'project-link'}
+                className={
+                  String(project.id) === String(selectedProjectId) ? 'project-link active' : 'project-link'
+                }
                 onClick={() => onSelectProject(project.id)}
-                aria-current={project.id === selectedProjectId ? 'page' : undefined}
+                aria-current={String(project.id) === String(selectedProjectId) ? 'page' : undefined}
               >
                 <span>
                   <strong>{project.name}</strong>

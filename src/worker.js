@@ -24,11 +24,7 @@ function error(message, status = 400) {
   return json({ error: message }, { status })
 }
 
-function createId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`
-}
-
-function getUserId(request) {
+function getUserEmail(request) {
   const identity = (
     request.headers.get('cf-access-authenticated-user-email') ??
     request.headers.get('cf-access-jwt-assertion') ??
@@ -36,16 +32,6 @@ function getUserId(request) {
   )
 
   return identity.trim().toLowerCase()
-}
-
-function userSuffix(userId) {
-  let hash = 0
-
-  for (const character of userId) {
-    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
-  }
-
-  return hash.toString(36)
 }
 
 function toProject(row) {
@@ -106,31 +92,33 @@ async function ensureSchema(db) {
     schemaReady = db.batch([
       db.prepare(`
         CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT NOT NULL UNIQUE,
           name TEXT NOT NULL DEFAULT '',
           title TEXT NOT NULL DEFAULT '',
           type TEXT NOT NULL DEFAULT 'standard',
-          created_by TEXT NOT NULL,
+          created_by INTEGER,
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
         )
       `),
       db.prepare(`
         CREATE TABLE IF NOT EXISTS projects (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
           name TEXT NOT NULL,
           description TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `),
       db.prepare(`
         CREATE TABLE IF NOT EXISTS tasks (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          project_id TEXT NOT NULL,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          project_id INTEGER NOT NULL,
           title TEXT NOT NULL,
           description TEXT NOT NULL DEFAULT '',
           status TEXT NOT NULL,
@@ -139,13 +127,14 @@ async function ensureSchema(db) {
           owner TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
           FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
       `),
       db.prepare(`
         CREATE TABLE IF NOT EXISTS project_members (
-          project_id TEXT NOT NULL,
-          user_id TEXT NOT NULL,
+          project_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
           role TEXT NOT NULL DEFAULT 'member',
           created_at TEXT NOT NULL,
           PRIMARY KEY (project_id, user_id),
@@ -187,27 +176,41 @@ function validateTaskInput(input) {
   return ''
 }
 
-async function ensureCurrentUser(db, userId) {
+async function ensureCurrentUser(db, email) {
   const now = new Date().toISOString()
-  const name = userId.includes('@') ? userId.split('@')[0] : 'Local user'
+  const name = email.includes('@') ? email.split('@')[0] : 'Local user'
   const existing = await db.prepare('SELECT id FROM users LIMIT 1').first()
   const type = existing ? 'standard' : 'admin'
 
   await db
     .prepare(
-      `INSERT INTO users (id, email, name, title, type, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at`,
+      `INSERT INTO users (email, name, title, type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(email) DO UPDATE SET updated_at = excluded.updated_at`,
     )
-    .bind(userId, userId, name, '', type, userId, now, now)
+    .bind(email, name, '', type, now, now)
     .run()
+
+  const currentUser = await getCurrentUser(db, email)
+
+  if (currentUser && currentUser.created_by === null) {
+    await db
+      .prepare('UPDATE users SET created_by = ?, updated_at = ? WHERE id = ?')
+      .bind(currentUser.id, now, currentUser.id)
+      .run()
+  }
+
+  return getCurrentUser(db, email)
 }
 
-async function getCurrentUser(db, userId) {
-  return db.prepare('SELECT id, email, name, title, type FROM users WHERE id = ?').bind(userId).first()
+async function getCurrentUser(db, email) {
+  return db
+    .prepare('SELECT id, email, name, title, type, created_by FROM users WHERE email = ?')
+    .bind(email)
+    .first()
 }
 
-async function ensureOwnedProjectMemberships(db, userId) {
+async function ensureOwnedProjectMemberships(db, currentUserId) {
   const now = new Date().toISOString()
 
   await db
@@ -217,43 +220,39 @@ async function ensureOwnedProjectMemberships(db, userId) {
        FROM projects
        WHERE user_id = ?`,
     )
-    .bind(userId, now, userId)
+    .bind(currentUserId, now, currentUserId)
     .run()
 }
 
-async function ensureSampleData(db, userId) {
-  await ensureCurrentUser(db, userId)
+async function ensureSampleData(db, currentUser) {
+  const currentUserId = currentUser.id
 
   const existing = await db
     .prepare('SELECT COUNT(*) AS count FROM projects WHERE user_id = ?')
-    .bind(userId)
+    .bind(currentUserId)
     .first()
 
   if (existing?.count > 0) {
     return
   }
 
-  const suffix = userSuffix(userId)
   const now = new Date().toISOString()
   const projectIdMap = new Map()
   const statements = []
 
   for (const project of sampleProjects) {
-    const id = `${project.id}-${suffix}`
-    projectIdMap.set(project.id, id)
-    statements.push(
-      db
-        .prepare(
-          'INSERT INTO projects (id, user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-        )
-        .bind(id, userId, project.name, project.description, now, now),
-    )
+    const result = await db
+      .prepare('INSERT INTO projects (user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+      .bind(currentUserId, project.name, project.description, now, now)
+      .run()
+    const projectId = result.meta.last_row_id
+    projectIdMap.set(project.id, projectId)
     statements.push(
       db
         .prepare(
           'INSERT OR IGNORE INTO project_members (project_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
         )
-        .bind(id, userId, 'owner', now),
+        .bind(projectId, currentUserId, 'owner', now),
     )
   }
 
@@ -262,12 +261,11 @@ async function ensureSampleData(db, userId) {
       db
         .prepare(
           `INSERT INTO tasks (
-            id, user_id, project_id, title, description, status, priority, due_date, owner, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            user_id, project_id, title, description, status, priority, due_date, owner, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
-          `${task.id}-${suffix}`,
-          userId,
+          currentUserId,
           projectIdMap.get(task.projectId),
           task.title,
           task.description,
@@ -284,17 +282,18 @@ async function ensureSampleData(db, userId) {
   await db.batch(statements)
 }
 
-async function loadWorkspace(db, userId) {
-  await ensureCurrentUser(db, userId)
-  await ensureSampleData(db, userId)
-  await ensureOwnedProjectMemberships(db, userId)
-  const currentUser = await getCurrentUser(db, userId)
+async function loadWorkspace(db, userEmail) {
+  const currentUser = await ensureCurrentUser(db, userEmail)
+  await ensureSampleData(db, currentUser)
+  await ensureOwnedProjectMemberships(db, currentUser.id)
   const isAdmin = currentUser?.type === 'admin'
   const projectScope = isAdmin ? '1 = 1' : '(p.user_id = ? OR pm.user_id = ?)'
-  const projectBindings = isAdmin ? [] : [userId, userId]
-  const taskBindings = isAdmin ? [] : [userId, userId]
-  const userBindings = isAdmin ? [] : [userId, userId, userId, userId]
-  const memberBindings = isAdmin ? [] : [userId, userId]
+  const projectBindings = isAdmin ? [] : [currentUser.id, currentUser.id]
+  const taskBindings = isAdmin ? [] : [currentUser.id, currentUser.id]
+  const userBindings = isAdmin
+    ? []
+    : [currentUser.id, currentUser.id, currentUser.id, currentUser.id]
+  const memberBindings = isAdmin ? [] : [currentUser.id, currentUser.id]
 
   const [projectRows, taskRows, userRows, memberRows] = await Promise.all([
     bindAll(
@@ -361,7 +360,7 @@ async function loadWorkspace(db, userId) {
     tasks: taskRows.results.map(toTask),
     users: userRows.results.map(toUser),
     projectMembers: memberRows.results.map(toProjectMember),
-    currentUserId: userId,
+    currentUserId: currentUser.id,
     currentUserType: currentUser?.type ?? 'standard',
   }
 }
@@ -373,15 +372,16 @@ async function handleApi(request, env) {
 
   await ensureSchema(env.DB)
 
-  const userId = getUserId(request)
+  const userEmail = getUserEmail(request)
   const url = new URL(request.url)
   const method = request.method
 
   if (method === 'GET' && url.pathname === '/api/workspace') {
-    return json(await loadWorkspace(env.DB, userId))
+    return json(await loadWorkspace(env.DB, userEmail))
   }
 
   if (method === 'POST' && url.pathname === '/api/projects') {
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
     const input = await readJson(request)
     const name = input?.name?.trim()
 
@@ -391,30 +391,29 @@ async function handleApi(request, env) {
 
     const now = new Date().toISOString()
     const project = {
-      id: createId('project'),
       name,
       description: input?.description?.trim() || 'New project',
     }
 
-    await env.DB
-      .prepare(
-        'INSERT INTO projects (id, user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      )
-      .bind(project.id, userId, project.name, project.description, now, now)
+    const result = await env.DB
+      .prepare('INSERT INTO projects (user_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+      .bind(currentUser.id, project.name, project.description, now, now)
       .run()
+
+    project.id = result.meta.last_row_id
 
     await env.DB
       .prepare(
         'INSERT OR IGNORE INTO project_members (project_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
       )
-      .bind(project.id, userId, 'owner', now)
+      .bind(project.id, currentUser.id, 'owner', now)
       .run()
 
     return json(project, { status: 201 })
   }
 
   if (method === 'POST' && url.pathname === '/api/users') {
-    const currentUser = await getCurrentUser(env.DB, userId)
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
 
     if (!['admin', 'manager'].includes(currentUser?.type)) {
       return error('Only admins and managers can create users.', 403)
@@ -435,26 +434,36 @@ async function handleApi(request, env) {
 
     await env.DB
       .prepare(
-        `INSERT INTO users (id, email, name, title, type, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, title = excluded.title, email = excluded.email, type = excluded.type, updated_at = excluded.updated_at`,
+        `INSERT INTO users (email, name, title, type, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(email) DO UPDATE SET name = excluded.name, title = excluded.title, type = excluded.type, updated_at = excluded.updated_at`,
       )
-      .bind(email, email, name, title, type, userId, now, now)
+      .bind(email, name, title, type, currentUser.id, now, now)
       .run()
 
-    return json({ id: email, email, name, title, type }, { status: 201 })
+    const savedUser = await env.DB
+      .prepare('SELECT id, email, name, title, type FROM users WHERE email = ?')
+      .bind(email)
+      .first()
+
+    return json(toUser(savedUser), { status: 201 })
   }
 
   const userMatch = url.pathname.match(/^\/api\/users\/([^/]+)$/)
 
   if (userMatch && method === 'PATCH') {
-    const currentUser = await getCurrentUser(env.DB, userId)
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
 
     if (currentUser?.type !== 'admin') {
       return error('Only admins can change user types.', 403)
     }
 
-    const targetUserId = decodeURIComponent(userMatch[1]).toLowerCase()
+    const targetUserId = Number(decodeURIComponent(userMatch[1]))
+
+    if (!Number.isInteger(targetUserId)) {
+      return error('User id is not valid.')
+    }
+
     const input = await readJson(request)
     const nextType = input?.type
     const nextTitle = typeof input?.title === 'string' ? input.title.trim() : undefined
@@ -492,9 +501,14 @@ async function handleApi(request, env) {
   const projectMembersMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/members$/)
 
   if (projectMembersMatch && method === 'PUT') {
-    const projectId = projectMembersMatch[1]
+    const projectId = Number(projectMembersMatch[1])
+
+    if (!Number.isInteger(projectId)) {
+      return error('Project id is not valid.')
+    }
+
     const input = await readJson(request)
-    const currentUser = await getCurrentUser(env.DB, userId)
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
 
     if (!['admin', 'manager'].includes(currentUser?.type)) {
       return error('Only admins and managers can manage project users.', 403)
@@ -507,7 +521,7 @@ async function handleApi(request, env) {
          LEFT JOIN project_members pm ON pm.project_id = p.id
          WHERE p.id = ? AND (? = 'admin' OR p.user_id = ? OR pm.user_id = ?)`,
       )
-      .bind(projectId, currentUser.type, userId, userId)
+      .bind(projectId, currentUser.type, currentUser.id, currentUser.id)
       .first()
 
     if (!project) {
@@ -516,7 +530,7 @@ async function handleApi(request, env) {
 
     const requestedUserIds = Array.isArray(input?.userIds) ? input.userIds : []
     const memberIds = [
-      ...new Set([...requestedUserIds, project.user_id].map((id) => String(id).toLowerCase())),
+      ...new Set([...requestedUserIds, project.user_id].map((id) => Number(id)).filter(Number.isInteger)),
     ]
     const now = new Date().toISOString()
 
@@ -555,6 +569,7 @@ async function handleApi(request, env) {
   }
 
   if (method === 'POST' && url.pathname === '/api/tasks') {
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
     const input = await readJson(request)
     const validationError = validateTaskInput(input)
 
@@ -569,7 +584,7 @@ async function handleApi(request, env) {
          LEFT JOIN project_members pm ON pm.project_id = p.id
          WHERE p.id = ? AND (p.user_id = ? OR pm.user_id = ?)`,
       )
-      .bind(input.projectId, userId, userId)
+      .bind(input.projectId, currentUser.id, currentUser.id)
       .first()
 
     if (!project) {
@@ -578,7 +593,6 @@ async function handleApi(request, env) {
 
     const now = new Date().toISOString()
     const task = {
-      id: createId('task'),
       projectId: input.projectId,
       title: input.title.trim(),
       description: input.description?.trim() ?? '',
@@ -589,15 +603,14 @@ async function handleApi(request, env) {
       createdAt: now,
     }
 
-    await env.DB
+    const result = await env.DB
       .prepare(
         `INSERT INTO tasks (
-          id, user_id, project_id, title, description, status, priority, due_date, owner, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          user_id, project_id, title, description, status, priority, due_date, owner, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
-        task.id,
-        userId,
+        currentUser.id,
         task.projectId,
         task.title,
         task.description,
@@ -610,13 +623,21 @@ async function handleApi(request, env) {
       )
       .run()
 
+    task.id = result.meta.last_row_id
+
     return json(task, { status: 201 })
   }
 
   const taskMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)$/)
 
   if (taskMatch && method === 'PATCH') {
-    const taskId = taskMatch[1]
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
+    const taskId = Number(taskMatch[1])
+
+    if (!Number.isInteger(taskId)) {
+      return error('Task id is not valid.')
+    }
+
     const input = await readJson(request)
     const current = await env.DB
       .prepare(
@@ -626,7 +647,7 @@ async function handleApi(request, env) {
          LEFT JOIN project_members pm ON pm.project_id = p.id
          WHERE t.id = ? AND (p.user_id = ? OR pm.user_id = ?)`,
       )
-      .bind(taskId, userId, userId)
+      .bind(taskId, currentUser.id, currentUser.id)
       .first()
 
     if (!current) {
@@ -677,6 +698,13 @@ async function handleApi(request, env) {
   }
 
   if (taskMatch && method === 'DELETE') {
+    const currentUser = await ensureCurrentUser(env.DB, userEmail)
+    const taskId = Number(taskMatch[1])
+
+    if (!Number.isInteger(taskId)) {
+      return error('Task id is not valid.')
+    }
+
     await env.DB
       .prepare(
         `DELETE FROM tasks
@@ -687,7 +715,7 @@ async function handleApi(request, env) {
            WHERE p.user_id = ? OR pm.user_id = ?
          )`,
       )
-      .bind(taskMatch[1], userId, userId)
+      .bind(taskId, currentUser.id, currentUser.id)
       .run()
     return new Response(null, { status: 204 })
   }
