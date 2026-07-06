@@ -3,7 +3,8 @@
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   background:
-    linear-gradient(180deg, rgba(38, 112, 111, 0.07), transparent 220px),
+    radial-gradient(circle at 88% 0%, rgba(31, 122, 119, 0.09), transparent 320px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), transparent 240px),
     var(--surface);
 }
 
@@ -17,8 +18,9 @@
   padding: 24px;
   border-right: 1px solid var(--border);
   background:
-    linear-gradient(180deg, rgba(200, 85, 61, 0.1), transparent 190px),
+    linear-gradient(180deg, rgba(31, 122, 119, 0.08), transparent 210px),
     var(--sidebar);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.82);
 }
 
 .brand-lockup {
@@ -28,14 +30,17 @@
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: inline-grid;
   place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent-strong), var(--coral));
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 42%),
+    linear-gradient(135deg, var(--accent-strong), var(--coral));
   color: #ffffff;
   font-weight: 700;
+  box-shadow: 0 10px 24px rgba(18, 90, 88, 0.24);
 }
 
 .brand-lockup p,
@@ -73,9 +78,9 @@
 .section-heading h2 {
   margin: 0;
   font-size: 0.82rem;
-  color: var(--accent-strong);
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .section-heading span {
@@ -107,16 +112,22 @@
   text-align: left;
   position: relative;
   overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .project-link:hover,
 .project-link.active {
-  border-color: rgba(38, 112, 111, 0.28);
-  background: var(--surface);
+  border-color: rgba(31, 122, 119, 0.24);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
 }
 
 .project-link.active {
-  box-shadow: inset 4px 0 0 var(--accent);
+  box-shadow: inset 4px 0 0 var(--accent), var(--shadow-sm);
 }
 
 .project-link strong,
@@ -168,7 +179,7 @@
 
 .workspace {
   min-width: 0;
-  padding: 28px;
+  padding: 30px;
 }
 
 .notice {
@@ -180,11 +191,13 @@
   color: var(--coral);
   font-size: 0.9rem;
   font-weight: 700;
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-header {
   align-items: flex-start;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
+  padding-bottom: 4px;
 }
 
 .eyebrow,
@@ -196,7 +209,7 @@
   color: var(--coral);
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -210,39 +223,41 @@ h1 {
 .workspace-summary {
   max-width: 680px;
   color: var(--text-muted);
+  font-size: 0.95rem;
 }
 
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(86px, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .summary-strip span {
   display: grid;
   gap: 2px;
   min-height: 62px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
   color: var(--text-muted);
   font-size: 0.78rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .summary-strip span:nth-child(1) {
   border-color: rgba(57, 111, 159, 0.28);
-  background: var(--blue-wash);
+  background: linear-gradient(180deg, #ffffff, var(--blue-wash));
 }
 
 .summary-strip span:nth-child(2) {
   border-color: rgba(163, 107, 8, 0.28);
-  background: var(--gold-wash);
+  background: linear-gradient(180deg, #ffffff, var(--gold-wash));
 }
 
 .summary-strip span:nth-child(3) {
   border-color: rgba(200, 85, 61, 0.28);
-  background: var(--coral-wash);
+  background: linear-gradient(180deg, #ffffff, var(--coral-wash));
 }
 
 .summary-strip strong {
@@ -253,10 +268,10 @@ h1 {
 .workspace-controls {
   display: grid;
   grid-template-columns: auto minmax(240px, 420px) auto auto;
-  align-items: start;
+  align-items: end;
   justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .task-form,
@@ -265,6 +280,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+  box-shadow: var(--shadow-sm);
 }
 
 .task-form {
@@ -284,7 +300,8 @@ h1 {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(21, 31, 27, 0.42);
+  background: rgba(21, 31, 27, 0.48);
+  backdrop-filter: blur(8px);
 }
 
 .task-modal {
@@ -294,7 +311,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
-  box-shadow: 0 24px 80px rgba(30, 43, 34, 0.24);
+  box-shadow: var(--shadow-lg);
 }
 
 .user-modal {
@@ -306,8 +323,9 @@ h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff, #fbfcf8);
 }
 
 .modal-header h2 {
@@ -356,6 +374,7 @@ h1 {
   background: #ffffff;
   color: var(--text);
   font-weight: 400;
+  box-shadow: 0 1px 2px rgba(23, 35, 24, 0.04);
 }
 
 .user-type-select {
@@ -484,6 +503,10 @@ textarea {
   background: #ffffff;
   color: var(--text-strong);
   padding: 9px 10px;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
 }
 
 textarea {
@@ -496,11 +519,18 @@ button {
   background: #ffffff;
   color: var(--text-strong);
   cursor: pointer;
+  font-weight: 700;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-wash);
+  box-shadow: 0 6px 16px rgba(23, 35, 24, 0.08);
 }
 
 button:disabled {
@@ -519,7 +549,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(38, 112, 111, 0.2);
+  outline: none;
+  box-shadow: var(--ring);
   outline-offset: 2px;
   border-color: var(--accent);
 }
@@ -528,9 +559,12 @@ textarea:focus-visible {
   justify-self: start;
   padding: 9px 14px;
   border-color: var(--accent-strong);
-  background: var(--accent-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent),
+    var(--accent-strong);
   color: #ffffff;
   font-weight: 700;
+  box-shadow: 0 8px 18px rgba(18, 90, 88, 0.18);
 }
 
 .primary-button:hover {
@@ -545,7 +579,7 @@ textarea:focus-visible {
 .board {
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -555,6 +589,7 @@ textarea:focus-visible {
   border-radius: 8px;
   background: var(--column);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .board-column:nth-child(1) {
@@ -581,8 +616,9 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px 10px;
+  padding: 13px 12px 11px;
   border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .board-column h2 {
@@ -598,7 +634,9 @@ textarea:focus-visible {
   background: #ffffff;
   color: var(--text-muted);
   font-size: 0.78rem;
+  font-weight: 800;
   text-align: center;
+  box-shadow: 0 1px 2px rgba(23, 35, 24, 0.06);
 }
 
 .board-column:nth-child(1) header span {
@@ -619,19 +657,23 @@ textarea:focus-visible {
 
 .task-list {
   display: grid;
-  gap: 10px;
-  padding: 10px;
+  gap: 11px;
+  padding: 11px;
 }
 
 .task-card {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(201, 200, 184, 0.78);
+  border: 1px solid rgba(199, 208, 192, 0.82);
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 8px 18px rgba(48, 56, 45, 0.06);
+  box-shadow: 0 8px 22px rgba(23, 35, 24, 0.07);
   position: relative;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .task-card::before {
@@ -640,6 +682,12 @@ textarea:focus-visible {
   inset: 0 auto 0 0;
   width: 4px;
   background: var(--accent);
+}
+
+.task-card:hover {
+  border-color: rgba(31, 122, 119, 0.28);
+  box-shadow: 0 16px 32px rgba(23, 35, 24, 0.11);
+  transform: translateY(-1px);
 }
 
 .task-card h3,
@@ -669,6 +717,7 @@ textarea:focus-visible {
   padding: 0;
   color: var(--text-muted);
   line-height: 1;
+  font-weight: 700;
 }
 
 .task-card-header button:hover {
@@ -684,7 +733,7 @@ textarea:focus-visible {
 }
 
 .task-meta span {
-  padding: 3px 7px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: var(--muted-surface);
   color: var(--text-muted);
@@ -719,6 +768,7 @@ textarea:focus-visible {
   margin: 0;
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.46);
   color: var(--text-muted);
   font-size: 0.86rem;
 }
