@@ -173,6 +173,9 @@
 
 .workspace {
   min-width: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
   padding: 24px 28px 28px;
 }
 
@@ -581,14 +584,19 @@ textarea:focus-visible {
 }
 
 .board {
+  flex: 1;
+  min-height: calc(100svh - 184px);
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .board-column {
   min-width: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--column);
@@ -597,23 +605,23 @@ textarea:focus-visible {
 }
 
 .board-column:nth-child(1) {
-  border-color: var(--border);
-  background: var(--column);
+  border-color: rgba(56, 189, 248, 0.26);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.1), var(--column) 118px);
 }
 
 .board-column:nth-child(2) {
-  border-color: var(--border);
-  background: var(--column);
+  border-color: rgba(139, 92, 246, 0.26);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.1), var(--column) 118px);
 }
 
 .board-column:nth-child(3) {
-  border-color: var(--border);
-  background: var(--column);
+  border-color: rgba(245, 166, 35, 0.26);
+  background: linear-gradient(180deg, rgba(245, 166, 35, 0.1), var(--column) 118px);
 }
 
 .board-column:nth-child(4) {
-  border-color: var(--border);
-  background: var(--column);
+  border-color: rgba(34, 197, 94, 0.26);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.1), var(--column) 118px);
 }
 
 .board-column header {
@@ -622,7 +630,7 @@ textarea:focus-visible {
   justify-content: space-between;
   padding: 13px 12px 11px;
   border-bottom: 1px solid var(--border);
-  background: #151616;
+  background: rgba(21, 22, 22, 0.82);
 }
 
 .board-column h2 {
@@ -683,9 +691,12 @@ textarea:focus-visible {
 }
 
 .task-list {
+  flex: 1;
+  align-content: start;
   display: grid;
   gap: 11px;
   padding: 11px;
+  overflow-y: auto;
 }
 
 .task-card {
@@ -915,6 +926,7 @@ textarea:focus-visible {
   }
 
   .workspace {
+    min-height: auto;
     padding: 18px;
   }
 
@@ -997,6 +1009,7 @@ textarea:focus-visible {
   }
 
   .board {
+    min-height: auto;
     display: grid;
     grid-template-columns: 1fr;
     overflow: visible;
@@ -1004,6 +1017,11 @@ textarea:focus-visible {
 
   .board-column {
     min-width: 0;
+    min-height: auto;
+  }
+
+  .task-list {
+    overflow: visible;
   }
 
   .member-row {
