@@ -998,7 +998,7 @@ textarea:focus-visible {
 }
 
 .activity-toggle {
-  margin: 6px 0 0;
+  margin: 6px 0 0 10px;
   color: var(--accent-strong);
   font-size: 0.82rem;
 }
