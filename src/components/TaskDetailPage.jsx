@@ -57,10 +57,12 @@ function getHistoryMessage(entry) {
 export function TaskDetailPage({ project, statuses, task, taskHistory = [], onBack, onSave }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(() => getEditableTask(task))
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState(() => new Set())
 
   useEffect(() => {
     setDraft(getEditableTask(task))
     setIsEditing(false)
+    setExpandedHistoryIds(new Set())
   }, [task])
 
   function updateDraft(field, value) {
@@ -81,6 +83,20 @@ export function TaskDetailPage({ project, statuses, task, taskHistory = [], onBa
       owner: draft.owner.trim(),
     })
     setIsEditing(false)
+  }
+
+  function toggleHistoryEntry(historyId) {
+    setExpandedHistoryIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+
+      if (nextIds.has(historyId)) {
+        nextIds.delete(historyId)
+      } else {
+        nextIds.add(historyId)
+      }
+
+      return nextIds
+    })
   }
 
   return (
@@ -210,21 +226,49 @@ export function TaskDetailPage({ project, statuses, task, taskHistory = [], onBa
 
             {taskHistory.length > 0 ? (
               <ol className="activity-list">
-                {taskHistory.map((entry) => (
-                  <li key={entry.id}>
-                    <div>
-                      <strong>{getHistoryMessage(entry)}</strong>
-                      {entry.fieldName !== 'description' ? (
-                        <p>
-                          <span>{entry.oldValue || 'Unassigned'}</span>
-                          <span aria-hidden="true">-&gt;</span>
-                          <span>{entry.newValue || 'Unassigned'}</span>
-                        </p>
-                      ) : null}
-                    </div>
-                    <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
-                  </li>
-                ))}
+                {taskHistory.map((entry) => {
+                  const isDescriptionChange = entry.fieldName === 'description'
+                  const isExpanded = expandedHistoryIds.has(entry.id)
+
+                  return (
+                    <li key={entry.id}>
+                      <div>
+                        <strong>{getHistoryMessage(entry)}</strong>
+                        {isDescriptionChange ? (
+                          <>
+                            <button
+                              className="text-button activity-toggle"
+                              type="button"
+                              onClick={() => toggleHistoryEntry(entry.id)}
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? 'Hide changes' : 'Show changes'}
+                            </button>
+                            {isExpanded ? (
+                              <div className="note-diff">
+                                <div>
+                                  <span>Before</span>
+                                  <p>{entry.oldValue || 'No notes.'}</p>
+                                </div>
+                                <div>
+                                  <span>After</span>
+                                  <p>{entry.newValue || 'No notes.'}</p>
+                                </div>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p>
+                            <span>{entry.oldValue || 'Unassigned'}</span>
+                            <span aria-hidden="true">-&gt;</span>
+                            <span>{entry.newValue || 'Unassigned'}</span>
+                          </p>
+                        )}
+                      </div>
+                      <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
+                    </li>
+                  )
+                })}
               </ol>
             ) : (
               <p className="activity-empty">No activity yet.</p>
