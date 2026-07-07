@@ -48,6 +48,7 @@ function updateTaskUrl(taskId) {
 function App() {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
+  const [taskHistory, setTaskHistory] = useState([])
   const [users, setUsers] = useState([])
   const [projectMembers, setProjectMembers] = useState([])
   const [currentUserId, setCurrentUserId] = useState('')
@@ -75,6 +76,7 @@ function App() {
 
         setProjects(data.projects)
         setTasks(data.tasks)
+        setTaskHistory(data.taskHistory ?? [])
         setUsers(data.users ?? [])
         setProjectMembers(data.projectMembers ?? [])
         setCurrentUserId(data.currentUserId ?? '')
@@ -134,6 +136,7 @@ function App() {
   const selectedProject = projects.find((project) => sameId(project.id, selectedProjectId)) ?? projects[0]
   const selectedTask = tasks.find((task) => sameId(task.id, selectedTaskId))
   const selectedTaskProject = projects.find((project) => sameId(project.id, selectedTask?.projectId))
+  const selectedTaskHistory = taskHistory.filter((entry) => sameId(entry.taskId, selectedTask?.id))
   const selectedProjectTasks = tasks.filter((task) => sameId(task.projectId, selectedProject?.id))
   const selectedProjectMembers = projectMembers.filter(
     (member) => sameId(member.projectId, selectedProject?.id),
@@ -264,8 +267,10 @@ function App() {
     )
 
     try {
-      const savedTask = await updateTask(taskId, updates)
+      const result = await updateTask(taskId, updates)
+      const savedTask = result.task
       setTasks((currentTasks) => currentTasks.map((task) => (sameId(task.id, taskId) ? savedTask : task)))
+      setTaskHistory((currentHistory) => [...(result.historyEntries ?? []), ...currentHistory])
       setErrorMessage('')
     } catch (error) {
       setTasks(previousTasks)
@@ -354,6 +359,7 @@ function App() {
               project={selectedTaskProject}
               statuses={statusOrder}
               task={selectedTask}
+              taskHistory={selectedTaskHistory}
             />
           ) : (
             <section className="empty-state">

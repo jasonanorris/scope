@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 
 const priorityOptions = ['Low', 'Medium', 'High']
+const fieldLabels = {
+  description: 'notes',
+  status: 'status',
+  priority: 'priority',
+  owner: 'owner',
+}
 
 function formatDate(value) {
   if (!value) {
@@ -25,7 +31,30 @@ function getEditableTask(task) {
   }
 }
 
-export function TaskDetailPage({ project, statuses, task, onBack, onSave }) {
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function getActor(entry) {
+  return entry.userName || entry.userEmail || 'Someone'
+}
+
+function getHistoryMessage(entry) {
+  const actor = getActor(entry)
+
+  if (entry.fieldName === 'description') {
+    return `${actor} updated notes`
+  }
+
+  return `${actor} changed ${fieldLabels[entry.fieldName] ?? entry.fieldName}`
+}
+
+export function TaskDetailPage({ project, statuses, task, taskHistory = [], onBack, onSave }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(() => getEditableTask(task))
 
@@ -147,31 +176,61 @@ export function TaskDetailPage({ project, statuses, task, onBack, onSave }) {
           </div>
         </form>
       ) : (
-        <div className="task-detail-panel">
-          <div className="detail-description">
-            <h2>Notes</h2>
-            <p>{task.description || 'No notes added.'}</p>
+        <>
+          <div className="task-detail-panel">
+            <div className="detail-description">
+              <h2>Notes</h2>
+              <p>{task.description || 'No notes added.'}</p>
+            </div>
+
+            <dl className="detail-field-grid detail-field-list">
+              <div>
+                <dt>Status</dt>
+                <dd>{task.status}</dd>
+              </div>
+              <div>
+                <dt>Priority</dt>
+                <dd>{task.priority}</dd>
+              </div>
+              <div>
+                <dt>Due date</dt>
+                <dd>{formatDate(task.dueDate)}</dd>
+              </div>
+              <div>
+                <dt>Owner</dt>
+                <dd>{task.owner || 'Unassigned'}</dd>
+              </div>
+            </dl>
           </div>
 
-          <dl className="detail-field-grid detail-field-list">
-            <div>
-              <dt>Status</dt>
-              <dd>{task.status}</dd>
+          <section className="task-detail-panel activity-panel" aria-labelledby="task-activity-title">
+            <div className="section-heading">
+              <h2 id="task-activity-title">Activity</h2>
             </div>
-            <div>
-              <dt>Priority</dt>
-              <dd>{task.priority}</dd>
-            </div>
-            <div>
-              <dt>Due date</dt>
-              <dd>{formatDate(task.dueDate)}</dd>
-            </div>
-            <div>
-              <dt>Owner</dt>
-              <dd>{task.owner || 'Unassigned'}</dd>
-            </div>
-          </dl>
-        </div>
+
+            {taskHistory.length > 0 ? (
+              <ol className="activity-list">
+                {taskHistory.map((entry) => (
+                  <li key={entry.id}>
+                    <div>
+                      <strong>{getHistoryMessage(entry)}</strong>
+                      {entry.fieldName !== 'description' ? (
+                        <p>
+                          <span>{entry.oldValue || 'Unassigned'}</span>
+                          <span aria-hidden="true">-&gt;</span>
+                          <span>{entry.newValue || 'Unassigned'}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="activity-empty">No activity yet.</p>
+            )}
+          </section>
+        </>
       )}
     </section>
   )

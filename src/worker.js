@@ -8,6 +8,12 @@ const jsonHeaders = {
 const allowedStatuses = new Set(['Backlog', 'In Progress', 'Review', 'Done'])
 const allowedPriorities = new Set(['Low', 'Medium', 'High'])
 const allowedUserTypes = new Set(['standard', 'manager', 'admin'])
+const trackedTaskHistoryFields = [
+  ['description', 'description'],
+  ['status', 'status'],
+  ['priority', 'priority'],
+  ['owner', 'owner'],
+]
 let schemaReady
 
 function json(data, init = {}) {
@@ -72,6 +78,20 @@ function toProjectMember(row) {
     projectId: row.project_id,
     userId: row.user_id,
     role: row.role,
+  }
+}
+
+function toTaskHistory(row) {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    userId: row.user_id,
+    userName: row.user_name ?? '',
+    userEmail: row.user_email ?? '',
+    fieldName: row.field_name,
+    oldValue: row.old_value,
+    newValue: row.new_value,
+    createdAt: row.created_at,
   }
 }
 
@@ -142,11 +162,26 @@ async function ensureSchema(db) {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `),
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS task_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          task_id INTEGER NOT NULL,
+          user_id INTEGER,
+          field_name TEXT NOT NULL,
+          old_value TEXT NOT NULL DEFAULT '',
+          new_value TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+      `),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_users_created_by ON users(created_by)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)'),
       db.prepare('CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id)'),
+      db.prepare('CREATE INDEX IF NOT EXISTS idx_task_history_task_id ON task_history(task_id)'),
+      db.prepare('CREATE INDEX IF NOT EXISTS idx_task_history_user_id ON task_history(user_id)'),
     ]).catch((error) => {
       schemaReady = undefined
       throw error
@@ -158,6 +193,23 @@ async function ensureSchema(db) {
   await db.prepare("ALTER TABLE users ADD COLUMN type TEXT NOT NULL DEFAULT 'standard'").run().catch(() => {})
   await db.prepare("ALTER TABLE users ADD COLUMN title TEXT NOT NULL DEFAULT ''").run().catch(() => {})
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_type ON users(type)').run()
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS task_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL,
+        user_id INTEGER,
+        field_name TEXT NOT NULL,
+        old_value TEXT NOT NULL DEFAULT '',
+        new_value TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )`,
+    )
+    .run()
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_task_history_task_id ON task_history(task_id)').run()
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_task_history_user_id ON task_history(user_id)').run()
 }
 
 function validateTaskInput(input) {
@@ -294,8 +346,9 @@ async function loadWorkspace(db, userEmail) {
     ? []
     : [currentUser.id, currentUser.id, currentUser.id, currentUser.id]
   const memberBindings = isAdmin ? [] : [currentUser.id, currentUser.id]
+  const historyBindings = isAdmin ? [] : [currentUser.id, currentUser.id]
 
-  const [projectRows, taskRows, userRows, memberRows] = await Promise.all([
+  const [projectRows, taskRows, userRows, memberRows, historyRows] = await Promise.all([
     bindAll(
       db
       .prepare(
@@ -353,11 +406,27 @@ async function loadWorkspace(db, userEmail) {
       ),
       memberBindings,
     ),
+    bindAll(
+      db
+      .prepare(
+        `SELECT th.id, th.task_id, th.user_id, u.name AS user_name, u.email AS user_email,
+                th.field_name, th.old_value, th.new_value, th.created_at
+         FROM task_history th
+         INNER JOIN tasks t ON t.id = th.task_id
+         INNER JOIN projects p ON p.id = t.project_id
+         LEFT JOIN project_members pm ON pm.project_id = p.id
+         LEFT JOIN users u ON u.id = th.user_id
+         WHERE ${projectScope}
+         ORDER BY th.created_at DESC, th.id DESC`,
+      ),
+      historyBindings,
+    ),
   ])
 
   return {
     projects: projectRows.results.map(toProject),
     tasks: taskRows.results.map(toTask),
+    taskHistory: historyRows.results.map(toTaskHistory),
     users: userRows.results.map(toUser),
     projectMembers: memberRows.results.map(toProjectMember),
     currentUserId: currentUser.id,
@@ -671,29 +740,71 @@ async function handleApi(request, env) {
       return error('Task status or priority is not valid.')
     }
 
-    await env.DB
-      .prepare(
-        `UPDATE tasks
-         SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, owner = ?, updated_at = ?
-         WHERE id = ?`,
-      )
-      .bind(
-        updated.title,
-        updated.description,
-        updated.status,
-        updated.priority,
-        updated.dueDate,
-        updated.owner,
-        new Date().toISOString(),
+    const now = new Date().toISOString()
+    const historyEntries = trackedTaskHistoryFields
+      .filter(([fieldName, currentField]) => String(current[currentField] ?? '') !== String(updated[fieldName] ?? ''))
+      .map(([fieldName, currentField]) => ({
         taskId,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        fieldName,
+        oldValue: current[currentField] ?? '',
+        newValue: updated[fieldName] ?? '',
+        createdAt: now,
+      }))
+
+    await env.DB.batch([
+      env.DB
+        .prepare(
+          `UPDATE tasks
+           SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, owner = ?, updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(
+          updated.title,
+          updated.description,
+          updated.status,
+          updated.priority,
+          updated.dueDate,
+          updated.owner,
+          now,
+          taskId,
+        ),
+      ...historyEntries.map((entry) =>
+        env.DB
+          .prepare(
+            `INSERT INTO task_history (
+              task_id, user_id, field_name, old_value, new_value, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(entry.taskId, entry.userId, entry.fieldName, entry.oldValue, entry.newValue, entry.createdAt),
       )
-      .run()
+    ])
+
+    const savedHistoryRows =
+      historyEntries.length > 0
+        ? await env.DB
+            .prepare(
+              `SELECT th.id, th.task_id, th.user_id, u.name AS user_name, u.email AS user_email,
+                      th.field_name, th.old_value, th.new_value, th.created_at
+               FROM task_history th
+               LEFT JOIN users u ON u.id = th.user_id
+               WHERE th.task_id = ? AND th.created_at = ?
+               ORDER BY th.id DESC`,
+            )
+            .bind(taskId, now)
+            .all()
+        : { results: [] }
 
     return json({
-      id: current.id,
-      projectId: current.project_id,
-      ...updated,
-      createdAt: current.created_at,
+      task: {
+        id: current.id,
+        projectId: current.project_id,
+        ...updated,
+        createdAt: current.created_at,
+      },
+      historyEntries: savedHistoryRows.results.map(toTaskHistory),
     })
   }
 

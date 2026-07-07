@@ -949,6 +949,54 @@ textarea:focus-visible {
   font-size: 0.95rem;
 }
 
+.activity-panel {
+  gap: 12px;
+}
+
+.activity-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121313;
+}
+
+.activity-list strong {
+  color: var(--text-strong);
+  font-size: 0.9rem;
+}
+
+.activity-list p,
+.activity-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.activity-list p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.activity-list time {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1104,6 +1152,10 @@ textarea:focus-visible {
   }
 
   .detail-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-list li {
     grid-template-columns: 1fr;
   }
 
